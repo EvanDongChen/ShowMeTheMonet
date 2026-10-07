@@ -45,9 +45,12 @@ export function tileRect(t: number, scale: number) {
 
 export function planTile(g: Garden, t: number): Op[] {
   const c = t % COLS, r = Math.floor(t / COLS);
-  const p: TilePlan = {
-    g, x0: (c * W) / COLS, x1: ((c + 1) * W) / COLS, y0: (r * H) / ROWS, y1: ((r + 1) * H) / ROWS, pad: PAD, items: [],
-  };
+  return planRect(g, (c * W) / COLS, (r * H) / ROWS, ((c + 1) * W) / COLS, ((r + 1) * H) / ROWS);
+}
+
+/** Plan any rectangle of the picture; a tile is one, the whole canvas is another. */
+export function planRect(g: Garden, x0: number, y0: number, x1: number, y1: number): Op[] {
+  const p: TilePlan = { g, x0, y0, x1, y1, pad: PAD, items: [] };
   planWash(p);
   planFoliage(p);
   planWater(p);
@@ -97,8 +100,16 @@ export async function paintTile(
   sliceMs = 14, reportEveryMs = 160, restMs = 3,
 ) {
   const { px0, py0, pw, ph } = tileRect(t, scale);
-  const canvas = makeCanvas(pw, ph), ctx = context2d(canvas);
-  ctx.setTransform(scale, 0, 0, scale, -px0, -py0);
+  // The rasteriser treats a path that crosses the canvas edge a little differently from one that
+  // doesn't, which would leave a faint seam. So paint with a margin and keep only the inside.
+  const canvas = makeCanvas(pw + MARGIN * 2, ph + MARGIN * 2), ctx = context2d(canvas);
+  const out = makeCanvas(pw, ph), octx = context2d(out);
+  ctx.setTransform(scale, 0, 0, scale, MARGIN - px0, MARGIN - py0);
+  const crop = () => {
+    octx.clearRect(0, 0, pw, ph);
+    octx.drawImage(canvas as CanvasImageSource, -MARGIN, -MARGIN);
+    return out;
+  };
   const ops = planTile(g, t);
   let i = 0, last = performance.now();
   while (i < ops.length) {
@@ -106,10 +117,12 @@ export async function paintTile(
     while (i < ops.length && performance.now() - t0 < sliceMs) ops[i++](ctx);
     if (i < ops.length && performance.now() - last > reportEveryMs) {
       last = performance.now();
-      await report(canvas, i / ops.length, false);
+      await report(crop(), i / ops.length, false);
     }
     // A short rest between slices leaves CPU time for the page to keep animating smoothly.
     if (restMs) await new Promise((r) => setTimeout(r, restMs));
   }
-  await report(canvas, 1, true);
+  await report(crop(), 1, true);
 }
+
+const MARGIN = 6;
