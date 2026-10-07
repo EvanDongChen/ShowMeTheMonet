@@ -68,6 +68,8 @@ function mass(c: CardCtx, sp: number, size: number, inside: (x: number, y: numbe
       for (let x = 0; x < w; x += step) {
         const px = x + rng.random() * step, py = y + rng.random() * step, d = inside(px, py);
         if (d < -0.05 || (d < 0.12 && !rng.chance(0.5 + d * 4))) continue;
+        // Stay a brush-width inside the card, or the sprite's edge would slice dabs into a straight line.
+        if (Math.min(px, w - px, py) < sz * 0.75) continue;
         if (pass && !rng.chance(0.55)) continue;
         const l = light(px, py) + rng.range(-0.12, 0.12) + (pass ? 0.12 : -0.05);
         touch(ctx, rng, px, py, sz * rng.range(0.7, 1.3), sz * rng.range(0.35, 0.55), lean(px, py) + rng.range(-0.4, 0.4), ramp(ramp0, l), 0.9);
