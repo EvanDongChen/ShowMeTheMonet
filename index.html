@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Show Me the Monet</title>
+    <meta name="description" content="An endlessly varied, procedurally painted Bridge over a Pond of Water Lilies, after Claude Monet, that you can row into." />
+    <meta name="theme-color" content="#f2ece0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Karla:wght@400;500;600&family=Kalam:wght@300;400&family=Mrs+Saint+Delafield&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cellipse cx='16' cy='19' rx='13' ry='7' fill='%236c9a45'/%3E%3Cpath d='M16 19 L29 17 L27 21Z' fill='%23f2ece0'/%3E%3Ccircle cx='14' cy='15' r='4.5' fill='%23f2c4cf'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app" data-mode="easel">
+      <header class="brand">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+          <path class="arch" d="M4 24 Q20 6 36 24" />
+          <path class="rail" d="M6 21 Q20 4 34 21" />
+          <ellipse class="pad" cx="13" cy="32" rx="7" ry="2.6" />
+          <ellipse class="pad" cx="28" cy="34" rx="5" ry="2" />
+          <circle class="bloom" cx="13" cy="30.5" r="1.8" />
+        </svg>
+        <span class="brand-name">Show Me <em>the</em> Monet</span>
+      </header>
+
+      <main id="easel-view" aria-label="The easel">
+        <div class="easel" id="easel">
+          <div class="leg leg-l" aria-hidden="true"></div>
+          <div class="leg leg-r" aria-hidden="true"></div>
+          <div class="leg leg-back" aria-hidden="true"></div>
+          <div class="mast" aria-hidden="true"></div>
+          <div class="clamp" aria-hidden="true"></div>
+          <figure class="canvas" id="canvas">
+            <canvas id="picture" aria-label="A painting of a Japanese footbridge over a pond of water lilies"></canvas>
+            <canvas id="picture-life" aria-hidden="true"></canvas>
+            <div class="wet" aria-hidden="true"></div>
+            <label class="signature" title="Click to change the seed">
+              <span class="sig-name">Claude Monet</span>
+              <input id="seed" class="sig-seed" type="text" spellcheck="false" autocomplete="off" aria-label="Seed" />
+            </label>
+          </figure>
+          <div class="ledge" aria-hidden="true"></div>
+          <div class="tag" id="tag">
+            <span class="tag-series" id="series">Harmony in Green</span>
+            <span class="tag-state" id="state">laying in the first touches…</span>
+          </div>
+        </div>
+      </main>
+
+      <section id="drift-view" aria-label="Drifting through the garden">
+        <canvas id="drift"></canvas>
+        <aside class="note" id="note" aria-live="polite">
+          <span class="pin" aria-hidden="true"></span>
+          <span class="note-title" id="note-title">Harmony in Green</span>
+          <span class="note-line" id="note-line">Reach 1 · 0 m rowed</span>
+        </aside>
+        <div class="hint" id="hint" aria-hidden="true">
+          <span class="hint-mouse"><b>W</b> / <b>↑</b> row &nbsp;·&nbsp; <b>A</b> <b>D</b> steer &nbsp;·&nbsp; move to look around &nbsp;·&nbsp; <b>Esc</b> step out</span>
+          <span class="hint-touch">hold to row &nbsp;·&nbsp; drag to steer</span>
+        </div>
+      </section>
+
+      <nav class="palette" id="palette" aria-label="Painter's palette">
+        <svg class="palette-board" viewBox="0 0 320 220" aria-hidden="true">
+          <defs>
+            <radialGradient id="wood" cx="35%" cy="30%" r="80%">
+              <stop offset="0" stop-color="#d8b48a" />
+              <stop offset="0.6" stop-color="#c29468" />
+              <stop offset="1" stop-color="#9c7048" />
+            </radialGradient>
+            <filter id="grain" x="0" y="0" width="100%" height="100%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.012 0.25" numOctaves="2" seed="4" />
+              <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.12  0 0 0 0.16 0" />
+              <feComposite in2="SourceGraphic" operator="in" />
+            </filter>
+          </defs>
+          <path class="board" fill="url(#wood)" d="M40 70 C40 22 120 8 190 14 C262 20 312 58 306 118 C300 176 242 212 168 208 C112 205 88 188 92 160 C95 140 118 138 118 120 C118 100 92 96 70 104 C48 112 40 96 40 70Z" />
+          <path filter="url(#grain)" d="M40 70 C40 22 120 8 190 14 C262 20 312 58 306 118 C300 176 242 212 168 208 C112 205 88 188 92 160 C95 140 118 138 118 120 C118 100 92 96 70 104 C48 112 40 96 40 70Z" />
+          <ellipse class="thumb" cx="78" cy="68" rx="17" ry="13" />
+        </svg>
+        <div class="dabs" data-for="easel">
+          <button class="dab dab-drift" id="btn-drift" style="--x: 240px; --y: 128px" aria-label="Drift in (D)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15 Q12 20 21 15 L18 18 Q12 21 6 18Z" /><path d="M12 15 V5 L17 12 Z" class="sail" /></svg>
+            <span class="dab-label">drift in</span>
+          </button>
+          <button class="dab dab-new" id="btn-new" style="--x: 168px; --y: 40px" aria-label="New painting (N)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 L15 9 M14 6 l4 4 M17 3 l4 4 -3 3 -4 -4z" /></svg>
+            <span class="dab-label">new canvas</span>
+          </button>
+          <button class="dab dab-animate" id="btn-animate" style="--x: 230px; --y: 54px" aria-label="Animate (A)" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 Q7 7 11 10 T19 10 M5 15 Q9 12 13 15 T21 15" /></svg>
+            <span class="dab-label">ripple</span>
+          </button>
+          <button class="dab dab-save" id="btn-save" style="--x: 182px; --y: 176px" aria-label="Save image (S)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 V15 M7 10 l5 5 5 -5 M5 20 H19" /></svg>
+            <span class="dab-label">keep it</span>
+          </button>
+          <button class="dab dab-share" id="btn-share" style="--x: 130px; --y: 160px" aria-label="Copy share link (C)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14 a4 4 0 0 0 5.6 0 l3-3 a4 4 0 0 0 -5.6 -5.6 l-1 1 M14 10 a4 4 0 0 0 -5.6 0 l-3 3 a4 4 0 0 0 5.6 5.6 l1-1" /></svg>
+            <span class="dab-label">share</span>
+          </button>
+          <button class="dab dab-about" id="btn-about" style="--x: 118px; --y: 30px" aria-label="About (I)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11 V17 M12 7 v.5" /></svg>
+            <span class="dab-label">about</span>
+          </button>
+        </div>
+        <div class="dabs" data-for="drift">
+          <button class="dab dab-back" id="btn-back" style="--x: 240px; --y: 128px" aria-label="Step out to the easel (Esc)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="12" height="11" rx="1" /><path d="M8 21 L11 15 M16 21 L13 15" /></svg>
+            <span class="dab-label">to the easel</span>
+          </button>
+          <button class="dab dab-pause" id="btn-pause" style="--x: 166px; --y: 44px" aria-label="Pause drifting (Space)" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6 V18 M15 6 V18" /></svg>
+            <span class="dab-label">rest the oars</span>
+          </button>
+          <button class="dab dab-save" id="btn-snap" style="--x: 150px; --y: 168px" aria-label="Save this view (P)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8 h3 l2-3 h6 l2 3 h3 v11 H4z" /><circle cx="12" cy="13" r="3.4" /></svg>
+            <span class="dab-label">sketch this</span>
+          </button>
+        </div>
+      </nav>
+
+      <dialog class="card" id="about" aria-labelledby="about-title">
+        <form method="dialog">
+          <p class="card-kicker">after Claude Monet · 1899</p>
+          <h2 id="about-title">Show Me <em>the</em> Monet</h2>
+          <p>
+            Every canvas here is a new <em>Bridge over a Pond of Water Lilies</em>, painted touch by touch from a seed: the
+            arch of the footbridge, the willows, the rafts of lilies and the light they're seen in. Seed
+            <button type="button" class="link" id="about-classic">1899</button> paints Monet's own composition.
+          </p>
+          <p>
+            <strong>Drift in</strong> to step through the canvas into a rowboat and row on through an endless water garden
+            built of painted cutouts, like a diorama lit from within.
+          </p>
+          <dl class="keys">
+            <dt>N</dt><dd>new canvas</dd>
+            <dt>D</dt><dd>drift in / step out</dd>
+            <dt>A</dt><dd>ripple (animate)</dd>
+            <dt>S</dt><dd>keep the picture</dd>
+            <dt>C</dt><dd>copy a link</dd>
+            <dt>W A S D</dt><dd>row and steer, in the boat</dd>
+            <dt>Space</dt><dd>rest the oars</dd>
+          </dl>
+          <p class="card-fine">Nothing is traced or scanned: every dab is placed by code. No images, no libraries.</p>
+          <button class="card-close" value="close" aria-label="Close">×</button>
+        </form>
+      </dialog>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

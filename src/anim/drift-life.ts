@@ -26,19 +26,20 @@ export class DriftLife {
       this.strokes = boat.strokes;
       // Two oars dip either side of the seat.
       for (const side of [-1, 1]) {
-        const ox = Math.cos(boat.yaw) * side * 1.0, oz = -Math.sin(boat.yaw) * side * 1.0;
-        this.rings.push({ x: boat.x + ox, z: boat.z + oz + 0.2, r: 0.05, age: 0, life: 3.2 });
+        const ox = Math.cos(boat.yaw) * side * 1.3, oz = -Math.sin(boat.yaw) * side * 1.3;
+        this.rings.push({ x: boat.x + ox + Math.sin(boat.yaw) * 2.2, z: boat.z + oz + Math.cos(boat.yaw) * 2.2, r: 0.05, age: 0, life: 2.6 });
       }
     }
     this.wake += dt * Math.abs(boat.v);
     if (this.wake > 1.4) {
       this.wake = 0;
-      const ahead = 2.2;
-      this.rings.push({ x: boat.x + Math.sin(boat.yaw) * ahead, z: boat.z + Math.cos(boat.yaw) * ahead, r: 0.1, age: 0, life: 2.4 });
+      const ahead = 4 + Math.random() * 3;
+      const side = (Math.random() - 0.5) * 3;
+      this.rings.push({ x: boat.x + Math.sin(boat.yaw) * ahead + Math.cos(boat.yaw) * side, z: boat.z + Math.cos(boat.yaw) * ahead, r: 0.05, age: 0, life: 2.4 });
     }
     for (const r of this.rings) {
       r.age += dt;
-      r.r += dt * (0.55 - r.age * 0.08);
+      r.r += dt * Math.max(0.05, 0.32 - r.age * 0.08);
     }
     this.rings = this.rings.filter((r) => r.age < r.life);
 
@@ -99,8 +100,8 @@ export class DriftLife {
     ctx.lineWidth = 1;
     for (const r of this.rings) {
       const p = proj(r.x, 0, r.z);
-      if (!p) continue;
-      const a = (1 - r.age / r.life) * 0.5;
+      if (!p || p.zr < 1.8) continue;
+      const a = (1 - r.age / r.life) * 0.4;
       ctx.strokeStyle = css(lighten(s.glint[1], 0.2), a);
       ctx.lineWidth = Math.max(1, p.sc * 0.025);
       ctx.beginPath();
