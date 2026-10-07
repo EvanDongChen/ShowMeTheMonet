@@ -299,7 +299,10 @@ button { font: inherit; color: inherit; }
   background: rgba(251, 248, 241, 0.82);
   border: 1.5px solid rgba(58, 64, 56, 0.55);
   border-radius: 14px 4px 16px 6px / 6px 14px 4px 16px;
-  white-space: nowrap;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+  line-height: 1.9;
   transition: opacity 1.2s ease;
 }
 .hint b { font-family: var(--ui); font-weight: 600; font-size: 12px; padding: 1px 6px; border: 1px solid rgba(58, 64, 56, 0.45); border-radius: 4px; }
@@ -478,7 +481,6 @@ button { font: inherit; color: inherit; }
   .brand-mark { width: 28px; height: 28px; }
   .palette { right: 50%; transform: translateX(50%) scale(0.8); transform-origin: 50% 100%; }
   [data-mode='drift'] .palette { right: max(4px, env(safe-area-inset-right)); transform: scale(0.6); transform-origin: 100% 100%; }
-  .tag { left: auto; right: 0; top: auto; bottom: calc(100% + 12px); }
   .hint { font-size: 14px; bottom: 20vh; }
 }
 

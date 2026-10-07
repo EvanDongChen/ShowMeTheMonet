@@ -150,7 +150,9 @@ export class Garden {
       for (let row = 0; row < rows; row++) {
         let x = raft.x0 * W + r.range(0, size * 0.5);
         while (x < raft.x1 * W) {
-          const y = ry + raft.tilt * (x - W / 2) + row * size * lerp(0.13, 0.22, d0) + r.bell() * size * 0.07;
+          // Rafts meander a little rather than lying in ruled lines.
+          const wander = this.noise.noise2(x / 190, ri * 3.7 + 0.5) * size * 0.9;
+          const y = ry + raft.tilt * (x - W / 2) + wander + row * size * lerp(0.13, 0.22, d0) + r.bell() * size * 0.07;
           const d = this.depth(y), w = lerp(20, 110, Math.pow(d, 1.1)) * r.range(0.7, 1.25);
           // Rafts thin out at their ends and break into holes where the noise is low.
           const t = (x / W - raft.x0) / (raft.x1 - raft.x0), edge = Math.min(t, 1 - t);
