@@ -2,9 +2,9 @@
 import { Rng } from '../core/rng';
 import { H, W, type Garden } from '../world/garden';
 import { planBridge } from './bridge';
-import { planFoliage, planReeds, planVeil, planWash } from './foliage';
+import { planFoliage, planReeds, planVeil, planWash, planWillows } from './foliage';
 import { planLilies } from './lilies';
-import type { Op, TilePlan } from './plan';
+import { L, type Op, type TilePlan } from './plan';
 import { planWater } from './water';
 
 export const COLS = 4, ROWS = 2, TILES = COLS * ROWS;
@@ -56,6 +56,7 @@ export function planRect(g: Garden, x0: number, y0: number, x1: number, y1: numb
   planWater(p);
   planLilies(p);
   planBridge(p);
+  planWillows(p, L.WILLOW_FRONT, 1);
   planVeil(p);
   planReeds(p);
   p.items.sort((a, b) => a.layer - b.layer || a.key - b.key);

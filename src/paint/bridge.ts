@@ -1,36 +1,41 @@
 // The Japanese footbridge: a shallow arch with a thick deck, two or three rails and regular posts,
-// painted in short touches that follow its curve. Lit from above, shadowed underneath.
-import { darken } from '../core/color';
-import { dab, dabLine, ramp, type Pt } from '../core/dab';
+// painted loosely in short strokes that follow its curve. Warm light along its top, violet shade
+// underneath, and rails that break and blur where light and leaves get in the way.
+import { darken, mix } from '../core/color';
+import { dabLine, flat, ramp, type Pt } from '../core/dab';
 import { cellRng, L, near, push, type TilePlan } from './plan';
 
 export function planBridge(p: TilePlan) {
   const g = p.g, b = g.bridge, s = g.series, sp = 9;
   const a = Math.floor((b.cx - b.span / 2) / sp) - 1, z = Math.ceil((b.cx + b.span / 2) / sp) + 1;
   const slope = (x: number) => Math.atan2(g.deckY(x + 1) - g.deckY(x - 1), 2);
+  const shade = darken(mix(ramp(s.bridge, 0.15), s.accent[0], 0.35), 0.05), warm = mix(ramp(s.bridge, 0.92), s.accent[3], 0.35);
 
   for (let i = a; i <= z; i++) {
     const { rng, key } = cellRng(p, L.BRIDGE, i, 0);
     const x = (i + rng.random()) * sp, deck = g.deckY(x), ang = slope(x);
-    if (!near(p, x, deck - b.railH / 2, 30, b.railH + b.thick * 3)) continue;
+    if (!near(p, x, deck - b.railH / 2, 34, b.railH + b.thick * 3)) continue;
 
     // Shade cast under the deck onto the bank behind.
     push(p, L.BRIDGE_SHADE, key, (ctx) => {
       for (let k = 0; k < 2; k++) {
-        dab(ctx, x + rng.range(-4, 4), deck + b.thick * rng.range(1, 2.6), rng.range(16, 26), b.thick * 0.8, ang, darken(ramp(s.foliage, 0.05), 0.2), 0.3);
+        flat(ctx, rng, x + rng.range(-4, 4), deck + b.thick * rng.range(1, 2.6), rng.range(16, 28), b.thick * 0.8, ang, darken(mix(ramp(s.foliage, 0.05), s.accent[0], 0.3), 0.2), 0.3);
       }
     });
 
     push(p, L.BRIDGE, 1 + key, (ctx) => {
-      // The deck: lit along its top edge, dark underneath.
-      for (const [f, t] of [[0.85, 0.15], [0.5, 0.5], [0.15, 0.85]] as const) {
-        dab(ctx, x, deck + b.thick * t, rng.range(15, 22), b.thick * 0.42, ang + rng.range(-0.06, 0.06), ramp(s.bridge, f * 0.8 + rng.range(-0.08, 0.08)), 0.92);
+      // The deck: warm light along the top edge, violet shade beneath.
+      for (const t of [0.85, 0.5, 0.15]) {
+        const col = t > 0.6 ? mix(shade, ramp(s.bridge, 0.3), rng.random()) : ramp(s.bridge, (1 - t) * 0.8 + rng.range(-0.1, 0.1));
+        flat(ctx, rng, x, deck + b.thick * t, rng.range(15, 24), b.thick * rng.range(0.38, 0.5), ang + rng.range(-0.07, 0.07), col, 0.93, rng.range(-0.05, 0.05));
       }
-      // The rails, each with a highlight on top.
+      if (rng.chance(0.5)) flat(ctx, rng, x, deck - 1, rng.range(8, 16), 3, ang, warm, 0.8);
+      // The rails, each now and then broken off where light or leaves cross it.
       for (let r = 1; r <= b.rails; r++) {
-        const ry = deck - (b.railH * r) / b.rails;
-        dab(ctx, x, ry, rng.range(15, 22), rng.range(8, 11), ang + rng.range(-0.05, 0.05), ramp(s.bridge, 0.5 + rng.range(-0.12, 0.12)), 0.95);
-        if (rng.chance(0.6)) dab(ctx, x, ry - 3, rng.range(8, 16), 3, ang, ramp(s.bridge, 0.95), 0.8);
+        if (rng.chance(0.1)) continue;
+        const ry = deck - (b.railH * r) / b.rails + rng.range(-1.2, 1.2);
+        flat(ctx, rng, x, ry, rng.range(14, 22), rng.range(7, 10), ang + rng.range(-0.06, 0.06), ramp(s.bridge, 0.5 + rng.range(-0.15, 0.12)), 0.92, rng.range(-0.06, 0.06));
+        if (rng.chance(0.55)) flat(ctx, rng, x, ry - 3, rng.range(8, 16), 2.6, ang, rng.chance(0.4) ? warm : ramp(s.bridge, 0.95), 0.75);
       }
     });
   }
@@ -40,11 +45,12 @@ export function planBridge(p: TilePlan) {
   for (let m = -m0; m <= m0; m++) {
     const { rng, key } = cellRng(p, L.BRIDGE, m, 1);
     const x = b.cx + m * b.post, deck = g.deckY(x);
-    if (!near(p, x, deck - b.railH / 2, 10, b.railH)) continue;
-    const pts: Pt[] = [[x, deck + 2], [x + rng.range(-1, 1), deck - b.railH - 5]];
+    if (!near(p, x, deck - b.railH / 2, 12, b.railH)) continue;
+    const top: Pt = [x + rng.range(-1.5, 1.5), deck - b.railH - 5], pts: Pt[] = [[x, deck + 2], top];
+    const wide = rng.range(7, 10), col = ramp(s.bridge, rng.range(0.32, 0.5));
     push(p, L.BRIDGE, key, (ctx) => {
-      dabLine(ctx, rng, pts, rng.range(8, 10), ramp(s.bridge, 0.42), 0.95, 11);
-      dabLine(ctx, rng, [[x - 3, deck], [x - 3, deck - b.railH]], 2.6, ramp(s.bridge, 0.9), 0.6, 12);
+      dabLine(ctx, rng, pts, wide, col, 0.94, 12);
+      dabLine(ctx, rng, [[x - wide * 0.3, deck], [top[0] - wide * 0.3, top[1] + 6]], 2.4, ramp(s.bridge, 0.9), 0.55, 12);
     });
   }
 }
