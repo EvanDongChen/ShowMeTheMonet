@@ -537,7 +537,6 @@ function frame(now: number) {
     }
   }
   requestAnimationFrame(frame);
-requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('preload')));
 }
 
 buildLights();
