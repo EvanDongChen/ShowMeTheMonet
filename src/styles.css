@@ -1,5 +1,5 @@
-/* Show Me the Monet: a painting standing on an easel in the open air, the controls daubed on a
-   painter's palette. Light, warm and quiet: linen, wood, and the colours of the pond. */
+/* Show Me the Monet: a painting hung on a gallery wall at night, under a picture light, in a slim dark
+   frame with a gilt slip. The controls are a quiet capsule beneath it, each with a dot of its paint. */
 
 :root {
   --wall: #1c2622;
@@ -42,7 +42,6 @@ body {
      on it and the corners falling away into shadow. */
   background-color: var(--wall);
   background-image:
-    radial-gradient(ellipse 52% 60% at 50% 41%, rgba(255, 232, 184, 0.2), rgba(255, 232, 184, 0) 74%),
     radial-gradient(ellipse 115% 95% at 50% 44%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75 0.5' numOctaves='3' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 0.6 0 0 0 0 0.62 0 0 0 0 0.55 0 0 0 0.075 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   color: var(--ink);
@@ -59,7 +58,12 @@ button { font: inherit; color: inherit; }
 /* ——— The studio: window light and leaf shadows falling on the wall ——— */
 
 .studio { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-/* (the window light has been taken down) */
+/* The picture light's warm pool on the wall. */
+.lamp {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 52% 60% at 50% 41%, rgba(255, 232, 184, 0.2), rgba(255, 232, 184, 0) 74%);
+}
 
 .leaves i {
   position: absolute;
@@ -110,14 +114,20 @@ button { font: inherit; color: inherit; }
   pointer-events: none;
   transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
 }
-.brand-mark { width: 46px; height: 46px; flex: none; }
+.brand { gap: 12px; }
+.brand-mark, .intro-mark { flex: none; fill: none; stroke: var(--paper); stroke-linecap: round; }
+.brand-mark { width: 34px; height: 34px; }
+.mk-arch { stroke-width: 1.7; }
+.mk-water { stroke-width: 0.8; opacity: 0.35; }
+/* The reflection, broken by the water. */
+.mk-refl { stroke-width: 1.3; stroke-dasharray: 2.4 2.6; stroke: var(--rose); opacity: 0.85; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.12; }
-.brand-tag { font-family: var(--ui); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(251, 248, 241, 0.5); margin-top: 3px; }
+.brand-tag { font-family: var(--ui); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(251, 248, 241, 0.5); margin-top: 3px; }
 .brand-name {
   font-family: var(--display);
   font-weight: 400;
-  font-size: 21px;
-  letter-spacing: 0.01em;
+  font-size: 19px;
+  letter-spacing: 0.015em;
   font-variation-settings: 'opsz' 40;
   color: var(--paper);
 }
@@ -196,25 +206,23 @@ button { font: inherit; color: inherit; }
   transform-origin: var(--zx, 50%) var(--zy, 40%);
   transition: transform 1.5s cubic-bezier(0.65, 0, 0.35, 1), filter 1.5s ease;
 }
-/* The frame: a gilt moulding, built from layered bevels, with a dark liner against the picture. */
-.canvas::before, .canvas::after { content: ''; position: absolute; inset: -30px; z-index: -1; border-radius: 2px; pointer-events: none; }
+/* The frame: slim and dark, like ebonised wood, catching the picture light along its top, with a fine
+   gilt slip against the painting. */
+.canvas::before, .canvas::after { content: ''; position: absolute; z-index: -1; pointer-events: none; }
 .canvas::before {
-  background: #b08259;
+  inset: -24px;
+  border-radius: 1px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 205, 0.1), rgba(255, 236, 205, 0) 18%),
+    linear-gradient(135deg, #2b231b, #16110c 46%, #0d0a07);
   box-shadow:
-    0 38px 80px rgba(0, 0, 0, 0.62), 0 12px 26px rgba(0, 0, 0, 0.5),
-    inset 0 0 0 2px #2c1b0e,
-    inset 0 0 0 10px #c29468,
-    inset 0 0 0 12px #6f4a2e,
-    inset 0 0 0 21px #d8b48a,
-    inset 0 0 0 22px #7d5333,
-    inset 0 0 0 27px #b08259,
-    inset 0 0 0 30px #20140a;
+    0 44px 90px rgba(0, 0, 0, 0.6), 0 14px 30px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 238, 210, 0.16), inset 0 0 0 1px rgba(0, 0, 0, 0.7);
 }
 .canvas::after {
-  /* The grain of the wood, and the light from above and the left falling across the moulding. */
-  background:
-    repeating-linear-gradient(97deg, rgba(255, 255, 255, 0.07) 0 2px, rgba(0, 0, 0, 0.06) 2px 5px),
-    linear-gradient(118deg, rgba(255, 238, 205, 0.3), rgba(255, 238, 205, 0) 30%, rgba(0, 0, 0, 0) 62%, rgba(30, 16, 4, 0.4));
+  inset: -5px;
+  background: linear-gradient(135deg, #ecd9a8, #a8844c 32%, #e2c890 52%, #8c6a3c 78%, #c9a971);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
 }
 .canvas canvas {
   position: absolute;
@@ -250,10 +258,9 @@ button { font: inherit; color: inherit; }
   padding: 9px 18px 10px;
   background: #f4efe4;
   border-radius: 1px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
   z-index: 3;
 }
-.tag::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(90deg, var(--wood-light), var(--wood) 60%, var(--wood-dark)); }
 .tag-series { font-family: var(--display); font-style: italic; font-size: 17px; line-height: 1.15; color: var(--ink); }
 .tag-seed { display: flex; align-items: baseline; gap: 7px; margin-top: 5px; padding-top: 6px; border-top: 1px solid var(--ink-faint); font-family: var(--ui); font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-soft); cursor: text; }
 .tag-seed input {
@@ -432,155 +439,264 @@ button { font: inherit; color: inherit; }
 @media (pointer: coarse) { .invite-mouse { display: none; } .invite-touch { display: inline; } }
 [data-mode='drift'] .invite { display: none; }
 @keyframes nudge { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-4px); } }
-.dab.pulse { animation: ring 2.2s ease-out infinite; }
+.dab.pulse { animation: ring 2.4s ease-out infinite; }
 @keyframes ring {
-  0% { box-shadow: 0 0 0 1.6px #2c1b0e, 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12), 0 0 0 1.6px rgba(232, 164, 172, 0.7); }
-  70%, 100% { box-shadow: 0 0 0 1.6px #2c1b0e, 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12), 0 0 0 22px rgba(232, 164, 172, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(232, 180, 184, 0.55); }
+  70%, 100% { box-shadow: 0 0 0 14px rgba(232, 180, 184, 0); }
 }
 
 /* ——— The palette ——— */
 
+/* One quiet capsule of controls, glass over the dark wall. Each control is a line icon with a dot of
+   its paint beside it; the way in is a pill of linen at the end. */
 .palette {
   position: absolute;
-  right: max(14px, env(safe-area-inset-right));
-  bottom: max(10px, env(safe-area-inset-bottom));
-  width: 320px;
-  height: 220px;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
   z-index: 10;
-  transform-origin: 100% 100%;
-  transition: transform 0.8s var(--ease);
-  filter: drop-shadow(6px 12px 16px rgba(0, 0, 0, 0.5));
+  height: 54px;
+  border-radius: 999px;
+  background: rgba(14, 20, 17, 0.66);
+  border: 1px solid rgba(251, 248, 241, 0.13);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
 }
-[data-mode='drift'] .palette { transform: scale(0.72); }
-.palette-board { position: absolute; inset: 0; width: 100%; height: 100%; }
-.palette-board .thumb { fill: #202b26; stroke: #2c1b0e; stroke-width: 2.6; }
-[data-mode='drift'] .palette-board .thumb { fill: rgba(40, 50, 40, 0.0); }
 
-.dabs { position: absolute; inset: 0; transition: opacity 0.4s ease; }
-.dabs[data-for='drift'] { opacity: 0; pointer-events: none; }
-[data-mode='drift'] .dabs[data-for='drift'] { opacity: 1; pointer-events: auto; }
-[data-mode='drift'] .dabs[data-for='easel'] { opacity: 0; pointer-events: none; }
+.dabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding: 0 5px;
+}
+/* Only the controls for where you are: the easel's, or the boat's. */
+.dabs[data-for='drift'], [data-mode='drift'] .dabs[data-for='easel'] { display: none; }
+[data-mode='drift'] .dabs[data-for='drift'] { display: flex; }
 
-/* Each control is a blob of paint squeezed onto the board. */
 .dab {
-  --size: 46px;
   --paint: var(--sage);
-  position: absolute;
-  left: calc(var(--x) - var(--size) / 2);
-  top: calc(var(--y) - var(--size) / 2);
-  width: var(--size);
-  height: var(--size);
+  position: relative;
+  width: 42px;
+  height: 42px;
   padding: 0;
   border: 0;
-  border-radius: 54% 46% 58% 42% / 48% 58% 42% 52%;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 38%),
-    radial-gradient(circle at 70% 78%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0) 55%),
-    var(--paint);
-  box-shadow: 0 0 0 1.6px #2c1b0e, 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(251, 248, 241, 0.82);
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: transform 0.35s var(--ease), border-radius 0.6s var(--ease);
+  transition: background 0.25s ease, color 0.25s ease;
 }
-.dab:nth-child(2n) { border-radius: 44% 56% 46% 54% / 58% 44% 56% 42%; }
-.dab:hover, .dab:focus-visible {
-  z-index: 6;
-  transform: scale(1.12) rotate(-4deg);
-  border-radius: 50% 50% 54% 46% / 46% 54% 46% 54%;
+/* A dot of the paint this control is mixed from. */
+.dab::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--paint);
+  opacity: 0.9;
+  transition: transform 0.3s var(--ease);
 }
-.dab:active { transform: scale(0.94); }
-.dab:focus-visible { outline: 2px dashed var(--ink); outline-offset: 4px; }
+.dab:hover, .dab:focus-visible { background: rgba(251, 248, 241, 0.09); color: var(--paper); }
+.dab:hover::after { transform: scale(1.4); }
+.dab:active { background: rgba(251, 248, 241, 0.14); }
+.dab:focus-visible { outline: 1px solid rgba(251, 248, 241, 0.6); outline-offset: 2px; }
 .dab svg {
-  width: 52%;
-  height: 52%;
+  width: 20px;
+  height: 20px;
   fill: none;
-  stroke: rgba(30, 36, 32, 0.78);
-  stroke-width: 1.9;
+  stroke: currentColor;
+  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .dab-label {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 16px);
   left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 11px 5px;
+  transform: translate(-50%, 4px);
+  padding: 5px 11px;
   font-family: var(--ui);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.11em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: #f6f1e6;
-  background: rgba(24, 20, 14, 0.9);
-  border: 1px solid rgba(255, 236, 200, 0.3);
+  color: var(--paper);
+  background: rgba(14, 20, 17, 0.88);
+  border: 1px solid rgba(251, 248, 241, 0.13);
   border-radius: 999px;
-  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.3s var(--ease);
 }
-.dab:hover .dab-label, .dab:focus-visible .dab-label { opacity: 1; transform: translateX(-50%) rotate(4deg) scale(0.89); }
-.dab-drift, .dab-back { z-index: 3; }
-.dab-drift { --size: 64px; --paint: var(--rose); }
-.dab-drift svg path { fill: rgba(30, 36, 32, 0.12); }
-.dab-drift .dab-label, .dab-back .dab-label { opacity: 1; bottom: auto; top: calc(100% + 8px); }
-/* "Step inside" is wider than the paint it names; slide it right, clear of the paint beside it. */
-.dab-drift .dab-label { left: calc(50% + 15px); }
+.dab:hover .dab-label, .dab:focus-visible .dab-label { opacity: 1; transform: translate(-50%, 0); }
+.dab-light[aria-expanded='true'] .dab-label { opacity: 0; }
+
+/* The way in (and out): a pill of linen, set apart at the end of the row. */
+.dab-drift, .dab-back {
+  order: 9;
+  display: flex;
+  gap: 8px;
+  width: auto;
+  margin-left: 11px;
+  padding: 0 18px 0 14px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.dab-drift::before, .dab-back::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: rgba(251, 248, 241, 0.16);
+}
+.dab-drift::after, .dab-back::after { display: none; }
+.dab-drift:hover, .dab-drift:focus-visible, .dab-back:hover, .dab-back:focus-visible { background: #fff; color: var(--ink); }
+.dabs .dab-drift .dab-label, .dabs .dab-back .dab-label {
+  position: static;
+  transform: none;
+  opacity: 1;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+}
+.dab-drift svg path { fill: rgba(47, 59, 51, 0.12); }
+
 .dab-new { --paint: var(--sage); }
 .dab-animate { --paint: var(--water); }
-.dab-animate[aria-pressed='false'] { filter: saturate(0.25) brightness(1.08); }
+.dab-animate[aria-pressed='false'] { color: rgba(251, 248, 241, 0.42); }
+.dab-animate[aria-pressed='false']::after { background: transparent; box-shadow: inset 0 0 0 1px var(--water); }
 .dab-save { --paint: var(--ochre); }
 .dab-share { --paint: var(--lilac); }
-.dab-about { --size: 38px; --paint: var(--lily); }
+.dab-about { --paint: var(--lily); }
 .dab-light { --paint: #f0d98a; }
-.dab-back { --size: 64px; --paint: var(--sage); }
 .dab-pause { --paint: var(--water); }
-.dab-pause[aria-pressed='true'] { --paint: var(--rose); }
+.dab-pause[aria-pressed='true'] { --paint: var(--rose); color: var(--paper); }
 
-
-/* Choosing the light: five blobs of paint, one for each of Monet's series. */
+/* Choosing the light: a card of the same glass, with a swatch for each of Monet's series. */
 .lights {
   position: absolute;
-  right: 6px;
-  bottom: calc(100% + 2px);
+  right: 0;
+  bottom: calc(100% + 12px);
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  width: 280px;
-  padding: 13px 16px 12px;
-  background: var(--paper);
-  border-radius: 3px;
-  box-shadow: 3px 7px 20px rgba(var(--shadow), 0.26);
-  transform: rotate(-1deg) translateY(8px);
-  transform-origin: 100% 100%;
+  gap: 10px;
+  width: 292px;
+  padding: 16px 18px 15px;
+  color: var(--paper);
+  background: rgba(14, 20, 17, 0.88);
+  border: 1px solid rgba(251, 248, 241, 0.13);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transform: translateY(6px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s ease, transform 0.45s var(--ease);
 }
-.lights.open { opacity: 1; pointer-events: auto; transform: rotate(-1deg); }
+.lights.open { opacity: 1; pointer-events: auto; transform: none; }
 [data-mode='drift'] .lights { display: none; }
-.lights-title { font-family: var(--display); font-style: italic; font-size: 18px; }
-.lights-row { display: flex; gap: 13px; }
-.lights-note { font-family: var(--hand); font-size: 14px; line-height: 1.35; color: var(--ink-soft); }
+.lights-title { font-family: var(--display); font-style: italic; font-weight: 300; font-size: 19px; }
+.lights-row { display: flex; gap: 12px; }
+.lights-note { font-family: var(--display); font-style: italic; font-weight: 300; font-size: 13px; line-height: 1.4; color: rgba(251, 248, 241, 0.55); }
 .swatch {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   border: 0;
-  border-radius: 54% 46% 58% 42% / 48% 58% 42% 52%;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 40%),
-    linear-gradient(135deg, var(--a) 0 38%, var(--b) 38% 70%, var(--c) 70%);
-  box-shadow: 0 0 0 1.6px #2c1b0e, 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--a) 0 38%, var(--b) 38% 70%, var(--c) 70%);
+  box-shadow: 0 0 0 1px rgba(251, 248, 241, 0.18);
   cursor: pointer;
-  transition: transform 0.3s var(--ease);
+  transition: transform 0.3s var(--ease), box-shadow 0.3s ease;
 }
-.swatch:nth-child(2n) { border-radius: 44% 56% 46% 54% / 58% 44% 56% 42%; }
-.swatch:hover, .swatch:focus-visible { transform: scale(1.14) rotate(-5deg); }
-.swatch[aria-pressed='true'] { outline: 2px solid var(--ink); outline-offset: 3px; }
-.swatch:focus-visible { outline: 2px dashed var(--ink); outline-offset: 4px; }
+.swatch:hover, .swatch:focus-visible { transform: scale(1.1); }
+.swatch[aria-pressed='true'] { box-shadow: 0 0 0 2px #0e1411, 0 0 0 3px var(--paper); }
+.swatch:focus-visible { outline: 1px solid rgba(251, 248, 241, 0.6); outline-offset: 5px; }
+
+/* ——— The way in: the room is dark, the mark draws itself, and the picture light comes on ——— */
+
+.intro {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: radial-gradient(ellipse 70% 60% at 50% 46%, #18211d, #0b0f0d 75%);
+  color: var(--paper);
+  cursor: pointer;
+  transition: opacity 0.9s ease, visibility 0s linear 0.9s;
+}
+#app:not(.intro-on) .intro { opacity: 0; visibility: hidden; pointer-events: none; }
+.intro-mark { width: 92px; height: 92px; margin-bottom: 10px; overflow: visible; }
+.intro .mk-arch { stroke-width: 1.2; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.3s cubic-bezier(0.6, 0, 0.3, 1) 0.25s forwards; }
+.intro .mk-water { stroke-width: 0.5; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0.4; animation: draw 1s ease-in-out 0.9s forwards; }
+.intro .mk-refl { stroke-width: 0.9; opacity: 0; animation: reflect 1.4s ease 1.25s forwards; }
+.intro-name {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 300;
+  font-size: clamp(26px, 4vw, 38px);
+  font-variation-settings: 'opsz' 144;
+  opacity: 0;
+  animation: name 1.3s var(--ease) 1.35s forwards;
+}
+.intro-name em { font-style: italic; color: rgba(251, 248, 241, 0.6); }
+.intro-line {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(251, 248, 241, 0.45);
+  opacity: 0;
+  animation: fadein 1s ease 1.8s forwards;
+}
+/* As the room comes up, the mark lifts a little and goes. */
+#app:not(.intro-on) .intro-mark, #app:not(.intro-on) .intro-name, #app:not(.intro-on) .intro-line { transform: translateY(-10px); transition: transform 0.9s var(--ease); }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes reflect {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 0.85; transform: none; }
+}
+@keyframes name {
+  from { opacity: 0; letter-spacing: 0.12em; transform: translateY(6px); }
+  to { opacity: 1; letter-spacing: 0.015em; transform: none; }
+}
+@keyframes fadein { to { opacity: 1; } }
+
+/* While the room is dark nothing is hung; then it all arrives, the light first and the picture with it. */
+.intro-on .lamp, .intro-on .easel, .intro-on .brand, .intro-on .palette, .intro-on .footnote { opacity: 0; }
+.arrived .lamp { animation: lamp 2.6s ease backwards; }
+.arrived .easel { animation: hang 1.6s var(--ease) 0.15s backwards; }
+.arrived .brand { animation: fadein-from 1.2s ease 0.6s backwards; }
+.arrived .palette { animation: rise 1.2s var(--ease) 0.75s backwards; }
+.arrived .footnote { animation: fadein-from 1.2s ease 1s backwards; }
+@keyframes lamp {
+  0% { opacity: 0; }
+  12% { opacity: 0.55; }
+  18% { opacity: 0.25; }
+  100% { opacity: 1; }
+}
+@keyframes hang { from { opacity: 0; translate: 0 18px; scale: 0.985; } }
+@keyframes rise { from { opacity: 0; translate: 0 12px; } }
+@keyframes fadein-from { from { opacity: 0; } }
 
 /* ——— About card and toast ——— */
 
@@ -656,21 +772,23 @@ button { font: inherit; color: inherit; }
 /* ——— Small screens ——— */
 
 @media (max-width: 720px) {
-  .canvas::before, .canvas::after { inset: -18px; }
-  .canvas::before { box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6), inset 0 0 0 2px #2c1b0e, inset 0 0 0 6px #c29468, inset 0 0 0 7px #6f4a2e, inset 0 0 0 12px #d8b48a, inset 0 0 0 15px #b08259, inset 0 0 0 18px #20140a; }
+  .canvas::before { inset: -14px; }
+  .canvas::after { inset: -4px; }
   .tag { top: calc(100% + 38px); }
   .brand-name { font-size: 18px; }
   .brand-tag { display: none; }
   .invite { top: 112px; bottom: auto; font-size: 10.5px; white-space: nowrap; padding: 8px 16px 8px 12px; }
-  .lights { right: 50%; margin-right: -140px; width: 280px; }
+  .lights { right: 50%; margin-right: -146px; }
   .brand-mark { width: 28px; height: 28px; }
-  .palette { right: 50%; transform: translateX(50%) scale(0.8); transform-origin: 50% 100%; }
-  [data-mode='drift'] .palette { right: max(4px, env(safe-area-inset-right)); transform: scale(0.6); transform-origin: 100% 100%; }
+  .dab { width: 38px; height: 38px; }
+  .dab-drift .dab-label, .dab-back .dab-label { display: none; }
+  .dab-drift, .dab-back { padding: 0 12px; }
+  .palette { right: 50%; transform: translateX(50%); height: 50px; }
   .hint { font-size: 14px; bottom: 20vh; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .canvas, .palette, #drift-view, #easel-view, .brand { transition-duration: 0.01s !important; transition-delay: 0s !important; }
+  .canvas, #drift-view, #easel-view, .brand { transition-duration: 0.01s !important; transition-delay: 0s !important; }
   .wet, .leaves i { animation: none; }
   .invite.show, .dab.pulse { animation: none; }
   .title-card.show { animation-duration: 0.01s; opacity: 0; }

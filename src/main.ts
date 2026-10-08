@@ -423,6 +423,11 @@ const DRIFT_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDow
 
 addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey || $<HTMLDialogElement>('about').open) return;
+  // A key during the way in just skips it.
+  if (app.classList.contains('intro-on')) {
+    arrive();
+    return;
+  }
   if (mode === 'drift') {
     if (DRIFT_KEYS.has(e.code)) {
       e.preventDefault();
@@ -539,9 +544,32 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 
+// ——— The way in ———
+
+let introTimer = 0;
+
+/** The room is dark, the mark draws itself and the name comes up; then the picture light comes on and the painting is hung. */
+function intro() {
+  if (reduced || mode === 'drift') {
+    app.classList.remove('intro-on');
+    return;
+  }
+  introTimer = window.setTimeout(arrive, 2900);
+  $('intro').addEventListener('click', arrive);
+}
+
+function arrive() {
+  if (!app.classList.contains('intro-on')) return;
+  clearTimeout(introTimer);
+  app.classList.remove('intro-on');
+  app.classList.add('arrived');
+  setTimeout(() => app.classList.remove('arrived'), 3200);
+}
+
 buildLights();
 setSeed(seed, !!params.get('seed'), true);
 setAnimate(animate);
 if (params.get('mode') === 'drift') enterDrift(true);
+intro();
 requestAnimationFrame(frame);
 requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('preload')));
