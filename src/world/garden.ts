@@ -165,7 +165,9 @@ export class Garden {
   /** Lay the lily pads of every raft, receding in perspective: small and squashed far away. */
   private layPads(): Pad[] {
     const pads: Pad[] = [];
-    const flowers = this.series.name === 'mist' ? 0.05 : 0.09;
+    // Monet's pond is spangled with blooms: mostly white and pink, a few red and yellow ones.
+    const flowers = this.series.name === 'mist' ? 0.14 : 0.24, nf = this.series.flower.length;
+    const bloom = (r: Rng) => { const v = r.random(); return Math.min(nf - 1, v < 0.42 ? 0 : v < 0.64 ? 1 : v < 0.78 ? 2 : v < 0.86 ? 3 : 4); };
     this.rafts.forEach((raft, ri) => {
       const r = this.rng(0x9ad, ri);
       const ry = raft.y * H, d0 = this.depth(ry);
@@ -183,7 +185,9 @@ export class Garden {
           if (keep && y > this.waterLine(x) + 3) {
             pads.push({
               x, y, w, h: w * lerp(0.2, 0.42, d), rot: r.range(-0.08, 0.08), tone: r.range(0.3, 1),
-              notch: r.range(-Math.PI, Math.PI), flower: r.chance(flowers) ? r.int(0, this.series.flower.length - 1) : -1,
+              notch: r.range(-Math.PI, Math.PI),
+              // Blooms gather in drifts rather than being sprinkled evenly.
+              flower: r.chance(flowers * (0.35 + 1.5 * smoothstep(-0.25, 0.45, this.noise.noise2(x / 110 + 40, y / 70)))) ? bloom(r) : -1,
               key: y + r.random() * 0.5,
             });
           }

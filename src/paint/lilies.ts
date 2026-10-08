@@ -15,6 +15,7 @@ export function planLilies(p: TilePlan) {
     const rng = g.rng(L.PAD, k);
     push(p, L.PAD, pad.key, (ctx) => drawPad(ctx, rng, pad, g.series));
     if (pad.flower >= 0) push(p, L.FLOWER, pad.key, (ctx) => drawFlower(ctx, rng, pad, g.series));
+    else push(p, L.FLOWER, pad.key, (ctx) => drawSpecks(ctx, g.rng(L.FLOWER, k), pad, g.series));
   });
 }
 
@@ -42,14 +43,32 @@ export function drawPad(ctx: Ctx, rng: Rng, pad: Pad, s: Series) {
 }
 
 export function drawFlower(ctx: Ctx, rng: Rng, pad: Pad, s: Series) {
-  const f = Math.max(2.4, pad.w * 0.15), col = s.flower[pad.flower];
-  const fx = pad.x + rng.range(-0.15, 0.15) * pad.w, fy = pad.y - pad.h * 0.25;
-  // Thick paint: a shadowed base, then petals, then a highlight on top.
-  dab(ctx, fx, fy + f * 0.25, f * 1.6, f * 0.6, 0, darken(col, 0.35), 0.6);
-  for (let i = 0; i < 7; i++) {
-    const a = -Math.PI / 2 + rng.range(-1.35, 1.35);
-    dab(ctx, fx + Math.cos(a) * f * 0.4, fy + Math.sin(a) * f * 0.3, f * rng.range(0.9, 1.35), f * 0.55, a, i < 3 ? darken(col, 0.15) : lighten(col, 0.18), 0.95);
+  const f = Math.max(2.6, pad.w * 0.17), col = s.flower[pad.flower];
+  const fx = pad.x + rng.range(-0.18, 0.18) * pad.w, fy = pad.y - pad.h * 0.2;
+  bloom(ctx, rng, fx, fy, f, col, s);
+  // Blooms often keep company: a smaller one, or a bud, beside the first.
+  if (pad.w > 30 && rng.chance(0.4)) bloom(ctx, rng, fx + rng.range(0.5, 1.1) * f * (rng.chance(0.5) ? 1 : -1), fy + rng.range(-0.1, 0.5) * f, f * rng.range(0.55, 0.8), s.flower[rng.chance(0.6) ? pad.flower : rng.int(0, 2)], s);
+}
+
+/** One blossom in thick paint: a shadowed base, petals fanned up from it, a highlight, a yellow heart. */
+function bloom(ctx: Ctx, rng: Rng, fx: number, fy: number, f: number, col: RGB, s: Series) {
+  dab(ctx, fx, fy + f * 0.3, f * 1.8, f * 0.6, 0, darken(mix(col, s.accent[0], 0.3), 0.3), 0.55);
+  const n = f > 6 ? 9 : 6;
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + rng.range(-1.5, 1.5);
+    dab(ctx, fx + Math.cos(a) * f * 0.45, fy + Math.sin(a) * f * 0.32, f * rng.range(0.9, 1.4), f * rng.range(0.5, 0.7), a, i < n / 3 ? darken(col, 0.14) : lighten(col, rng.range(0.05, 0.22)), 0.95);
   }
-  dab(ctx, fx - f * 0.15, fy - f * 0.35, f * 0.6, f * 0.25, -0.2, lighten(col, 0.5), 0.85);
-  dab(ctx, fx, fy - f * 0.05, f * 0.4, f * 0.32, 0, [244, 214, 110], 0.9);
+  dab(ctx, fx - f * 0.15, fy - f * 0.35, f * 0.65, f * 0.25, -0.2, lighten(col, 0.5), 0.85);
+  if (f > 4) dab(ctx, fx, fy - f * 0.05, f * 0.4, f * 0.32, 0, s.flower[4], 0.9);
+}
+
+/** Pads without a bloom still carry the odd fleck of pink or white, as the far rafts do in Monet's. */
+function drawSpecks(ctx: Ctx, rng: Rng, pad: Pad, s: Series) {
+  if (!rng.chance(0.45)) return;
+  const n = rng.int(1, 3);
+  for (let i = 0; i < n; i++) {
+    const col = s.flower[rng.chance(0.55) ? 1 : rng.chance(0.5) ? 0 : rng.int(2, 4)];
+    const len = Math.max(2, pad.w * rng.range(0.08, 0.16));
+    dab(ctx, pad.x + rng.range(-0.35, 0.35) * pad.w, pad.y + rng.range(-0.25, 0.1) * pad.h, len, len * rng.range(0.4, 0.6), rng.range(-0.3, 0.3), lighten(col, rng.range(0, 0.12)), 0.9);
+  }
 }
