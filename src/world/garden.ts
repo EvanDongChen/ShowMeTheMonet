@@ -6,7 +6,7 @@ import { Noise } from '../core/noise';
 import { hash, hashString, Rng } from '../core/rng';
 import { ramp } from '../core/dab';
 import { CLASSIC_SEED, GIVERNY, type RaftNote } from './giverny';
-import { SERIES, SERIES_NAMES, type Series } from './series';
+import { SERIES, SERIES_NAMES, type Series, type SeriesName } from './series';
 import type { RGB } from '../core/color';
 
 /** Canvas size in painting units. */
@@ -44,14 +44,15 @@ export class Garden {
   /** Pads bucketed on a coarse grid, to ask quickly whether a spot of water is open. */
   private padGrid = new Map<number, Pad[]>();
 
-  constructor(readonly seed: string) {
+  /** `light` overrides which series the seed paints in; everything else stays the seed's own. */
+  constructor(readonly seed: string, light: SeriesName | null = null) {
     this.s = hashString(seed);
     this.noise = new Noise(new Rng(hash(this.s, 0x6e015e)));
     this.classic = seed === CLASSIC_SEED;
     const r = this.rng(0xa11);
     if (this.classic) {
       const c = GIVERNY;
-      this.series = SERIES[c.series];
+      this.series = SERIES[light ?? c.series];
       this.bridge = {
         cx: c.bridge.cx * W, span: c.bridge.span * W, apex: c.bridge.apex * H, end: c.bridge.end * H,
         thick: c.bridge.thick * H, railH: c.bridge.railH * H, rails: c.bridge.rails, post: c.bridge.post * W,
@@ -62,7 +63,8 @@ export class Garden {
       this.rafts = c.rafts;
     } else {
       // The first series ("Harmony in Green") is the most common, as it is in Monet's own run.
-      this.series = SERIES[r.chance(0.35) ? 'green' : r.pick(SERIES_NAMES)];
+      const picked = r.chance(0.35) ? 'green' : r.pick(SERIES_NAMES);
+      this.series = SERIES[light ?? picked];
       const apex = r.range(0.17, 0.3);
       this.bridge = {
         cx: r.range(0.38, 0.62) * W, span: r.range(1.05, 1.6) * W,

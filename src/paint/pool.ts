@@ -1,6 +1,7 @@
 // Hands painting jobs (easel tiles, drift cards) to a pool of workers and keeps the latest image of
 // each. Falls back to painting on the page when workers or OffscreenCanvas aren't available.
 import { Garden } from '../world/garden';
+import type { SeriesName } from '../world/series';
 import { paintCard } from './cards';
 import { paintTile } from './tiles';
 import PaintWorker from './worker?worker&inline';
@@ -20,7 +21,7 @@ export class PaintPool {
   private local: Garden | null = null;
   private disposed = false;
 
-  constructor(readonly seed: string, private onChange: (id: string) => void) {
+  constructor(readonly seed: string, private onChange: (id: string) => void, readonly light: SeriesName | null = null) {
     const canWork = typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined';
     // A few workers paint in parallel; more would starve the page's own rendering on smaller machines.
     // A phone gets fewer: its cores are slower and share a thermal budget with the page.
@@ -32,7 +33,7 @@ export class PaintPool {
         const slot: Slot = { worker, busy: null };
         worker.onmessage = (e: MessageEvent<FromWorker>) => this.receive(slot, e.data);
         worker.onerror = () => this.fallBack();
-        this.send(slot, { type: 'init', seed });
+        this.send(slot, { type: 'init', seed, light });
         this.slots.push(slot);
       } catch {
         break;
@@ -116,7 +117,7 @@ export class PaintPool {
     if (this.local) return;
     for (const s of this.slots) s.worker?.terminate();
     for (const s of this.slots) if (s.busy !== null) this.images.delete(s.busy);
-    this.local = new Garden(this.seed);
+    this.local = new Garden(this.seed, this.light);
     this.slots = [{ worker: null, busy: null }];
   }
 

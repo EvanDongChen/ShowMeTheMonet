@@ -2,12 +2,16 @@
 import './styles.css';
 import { Life } from './anim/life';
 import { Ambience } from './anim/sound';
+import { css } from './core/color';
 import { clamp } from './core/math';
+import { daylight, hourColor, hourName } from './drift/daylight';
 import { Drift } from './drift/drift';
+import { makePostcard } from './postcard';
 import { PaintPool } from './paint/pool';
 import { picturePixels, tileRect, TILES } from './paint/tiles';
 import type { Job } from './paint/worker';
 import { Garden, H, W } from './world/garden';
+import { SERIES, SERIES_NAMES, type SeriesName } from './world/series';
 import { CLASSIC_SEED } from './world/giverny';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -41,6 +45,8 @@ let scale = 1;
 let animate = params.get('animate') !== '0' && !reduced;
 let mode: 'easel' | 'drift' = 'easel';
 let finished = false;
+/** The series the person has chosen for this canvas, or null for the seed's own. */
+let light: SeriesName | null = SERIES_NAMES.includes(params.get('light') as SeriesName) ? (params.get('light') as SeriesName) : null;
 
 function randomSeed() {
   return String(1 + Math.floor(Math.random() * 99998));
@@ -69,15 +75,19 @@ function progress() {
   const p = sum / TILES, state = $('state');
   finished = p >= 0.999;
   canvasFig.classList.toggle('painting', !finished);
+  canvasFig.classList.toggle('ready', finished);
+  const invite = finished && !storage('monet-stepped');
+  $('invite').classList.toggle('show', invite);
+  $('btn-drift').classList.toggle('pulse', invite);
   state.textContent = finished
-    ? (garden.classic ? 'after Monet, 1899' : `canvas no. ${seed}`)
-    : p < 0.25 ? 'laying in the first touches…' : p < 0.6 ? 'working the water…' : p < 0.9 ? 'placing the lilies…' : 'signing it…';
+    ? (garden.classic ? 'after Monet, 1899' : 'a canvas of your own')
+    : p < 0.25 ? 'laying in the first touches…' : p < 0.6 ? 'working the water…' : p < 0.9 ? 'placing the lilies…' : 'the last touches…';
 }
 
 /** Fit the canvas on the easel, and repaint it if the size it needs has changed. */
 function layout() {
   const small = innerWidth <= 720;
-  const maxH = innerHeight * (small ? 0.56 : 0.7), maxW = small ? innerWidth - 28 : Math.min(innerWidth - 400, innerWidth * 0.66);
+  const maxH = innerHeight * (small ? 0.56 : 0.7), maxW = small ? innerWidth - 66 : Math.min(innerWidth - 400, innerWidth * 0.66);
   const pw = Math.round(Math.min(Math.max(maxW, 260), maxH * (W / H), 1150)), ph = Math.round(pw * (H / W));
   document.documentElement.style.setProperty('--pw', `${pw}px`);
   document.documentElement.style.setProperty('--ph', `${ph}px`);
@@ -101,17 +111,19 @@ function layout() {
   seedInput.style.setProperty('--len', String(seedInput.value.length));
 }
 
-function setSeed(next: string, push = true) {
+function setSeed(next: string, push = true, keepLight = false) {
   next = next.trim().slice(0, 24) || randomSeed();
+  if (!keepLight) light = null;
   pool?.dispose();
   seed = next;
-  garden = new Garden(seed);
-  pool = new PaintPool(seed, onPainted);
+  garden = new Garden(seed, light);
+  pool = new PaintPool(seed, onPainted, light);
   life = new Life(garden);
   drift = null;
   seedInput.value = seed;
   seedInput.style.setProperty('--len', String(seed.length));
   $('series').textContent = garden.series.title;
+  syncLights();
   document.title = garden.classic ? 'Show Me the Monet' : `No. ${seed} · Show Me the Monet`;
   const b = garden.bridge;
   canvasFig.style.setProperty('--zx', `${(b.cx / W) * 100}%`);
@@ -122,9 +134,57 @@ function setSeed(next: string, push = true) {
   if (push) {
     const u = new URL(location.href);
     u.searchParams.set('seed', seed);
+    if (light) u.searchParams.set('light', light);
+    else u.searchParams.delete('light');
     history.replaceState(null, '', u);
   }
-  if (mode === 'drift') startDrift();
+  if (mode === 'drift') {
+    startDrift();
+    showTitle();
+  }
+}
+
+// ——— Choosing the light ———
+
+/** Monet painted the bridge again and again in different light. Each swatch repaints this canvas in one of those series. */
+function buildLights() {
+  const row = $('lights-row');
+  for (const name of SERIES_NAMES) {
+    const s = SERIES[name], b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'swatch';
+    b.dataset.light = name;
+    b.title = s.title;
+    b.setAttribute('aria-label', s.title);
+    b.style.setProperty('--a', css(s.foliage[3]));
+    b.style.setProperty('--b', css(s.water[2]));
+    b.style.setProperty('--c', css(s.name === 'rose' || s.name === 'autumn' ? s.accent[2] : s.flower[1]));
+    b.onclick = () => { setLight(name); toggleLights(false); };
+    b.onmouseenter = () => ($('lights-title').textContent = s.title);
+    b.onmouseleave = () => ($('lights-title').textContent = garden.series.title);
+    row.append(b);
+  }
+}
+
+function syncLights() {
+  $('lights-title').textContent = garden.series.title;
+  for (const b of document.querySelectorAll<HTMLElement>('.swatch')) b.setAttribute('aria-pressed', String(b.dataset.light === garden.series.name));
+}
+
+function setLight(name: SeriesName) {
+  if (garden.series.name === name && light === name) return;
+  light = name;
+  setSeed(seed, true, true);
+  toast(SERIES[name].title);
+}
+
+function cycleLight() {
+  setLight(SERIES_NAMES[(SERIES_NAMES.indexOf(garden.series.name) + 1) % SERIES_NAMES.length]);
+}
+
+function toggleLights(open = !$('lights').classList.contains('open')) {
+  $('lights').classList.toggle('open', open);
+  $('btn-light').setAttribute('aria-expanded', String(open));
 }
 
 // ——— Drifting ———
@@ -144,17 +204,24 @@ function startDrift() {
 function enterDrift(immediate = false) {
   if (mode === 'drift') return;
   mode = 'drift';
+  storage('monet-stepped', '1');
+  $('invite').classList.remove('show');
+  $('btn-drift').classList.remove('pulse');
   sound.start();
   if (!drift) startDrift();
   setModeParam();
   if (immediate || reduced) {
     app.dataset.mode = 'drift';
+    showTitle();
     return;
   }
   // Lean into the canvas toward the bridge, then let the garden take over.
   app.classList.add('stepping');
   setTimeout(() => {
-    if (mode === 'drift') app.dataset.mode = 'drift';
+    if (mode === 'drift') {
+      app.dataset.mode = 'drift';
+      showTitle();
+    }
   }, 1100);
 }
 
@@ -181,6 +248,16 @@ function toggleSound() {
   toast(sound.muted ? 'sound off' : 'sound on');
 }
 
+/** The name of the place, written across the view as the boat slips in. */
+function showTitle() {
+  const card = $('title-card');
+  $('tc-title').textContent = garden.series.title;
+  $('tc-line').textContent = garden.classic ? 'after Monet, 1899' : `canvas no. ${seed}`;
+  card.classList.remove('show');
+  void card.offsetWidth;
+  card.classList.add('show');
+}
+
 function togglePause() {
   if (!drift) return;
   drift.paused = !drift.paused;
@@ -198,29 +275,18 @@ function rowed() {
 
 async function savePicture() {
   if (mode === 'drift') {
-    download(driftCanvas, `monet-${seed}-reach-${(drift?.reach ?? 0) + 1}.png`);
+    if (!drift) return;
+    const reach = drift.reach + 1, hour = hourName(daylight(drift.boat.z));
+    const card = await makePostcard(driftCanvas, { title: garden.series.title, line: `Reach ${reach} · ${Math.round(drift.distance)} m rowed · ${hour}`, seed });
+    download(card, `monet-${seed}-reach-${reach}.png`);
     return;
   }
   if (!finished) {
     toast('still wet: wait for the last touches');
     return;
   }
-  await document.fonts.ready;
-  const out = document.createElement('canvas');
-  out.width = picture.width;
-  out.height = picture.height;
-  const ctx = out.getContext('2d')!;
-  ctx.drawImage(picture, 0, 0);
-  // The signature is set in a web font, so it is drawn here on the page rather than in a worker.
-  const size = Math.round(out.width * 0.034);
-  ctx.font = `${size}px 'Reenie Beanie', cursive`;
-  ctx.fillStyle = 'rgba(110, 42, 34, 0.85)';
-  ctx.textAlign = 'right';
-  ctx.globalCompositeOperation = 'multiply';
-  ctx.translate(out.width * 0.97, out.height * 0.972);
-  ctx.rotate(-0.028);
-  ctx.fillText(`Claude Monet ${seed}`, 0, 0);
-  download(out, `monet-${seed}.png`);
+  const card = await makePostcard(picture, { title: garden.series.title, line: garden.classic ? 'after Monet, 1899' : `canvas no. ${seed}`, seed });
+  download(card, `monet-${seed}.png`);
 }
 
 function download(c: HTMLCanvasElement, name: string) {
@@ -231,7 +297,7 @@ function download(c: HTMLCanvasElement, name: string) {
     a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast('kept, in your downloads');
+    toast('a postcard, in your downloads');
   });
 }
 
@@ -268,6 +334,7 @@ $('btn-drift').onclick = () => enterDrift();
 $('btn-back').onclick = () => leaveDrift();
 $('btn-pause').onclick = () => togglePause();
 $('btn-animate').onclick = () => setAnimate(!animate);
+$('btn-light').onclick = () => toggleLights();
 $('btn-save').onclick = () => savePicture();
 $('btn-snap').onclick = () => savePicture();
 $('btn-share').onclick = () => share();
@@ -276,6 +343,12 @@ $('about-classic').onclick = () => {
   $<HTMLDialogElement>('about').close();
   setSeed(CLASSIC_SEED);
 };
+canvasFig.addEventListener('click', () => {
+  if (mode === 'easel' && finished) enterDrift();
+});
+addEventListener('pointerdown', (e) => {
+  if (!(e.target as HTMLElement).closest('.palette')) toggleLights(false);
+});
 seedInput.addEventListener('input', () => seedInput.style.setProperty('--len', String(seedInput.value.length)));
 seedInput.addEventListener('change', () => {
   if (seedInput.value.trim() !== seed) setSeed(seedInput.value);
@@ -307,6 +380,8 @@ addEventListener('keydown', (e) => {
     case 'KeyN': setSeed(randomSeed()); break;
     case 'KeyD': enterDrift(); break;
     case 'KeyA': setAnimate(!animate); break;
+    case 'KeyL': cycleLight(); break;
+    case 'Escape': toggleLights(false); break;
     case 'KeyS': savePicture(); break;
     case 'KeyC': share(); break;
     case 'KeyI': case 'Slash': $<HTMLDialogElement>('about').showModal(); break;
@@ -376,6 +451,7 @@ function frame(now: number) {
     drift.request();
     drift.update(dt);
     sound.update(dt, drift.boat);
+    for (const msg of drift.takeEvents()) toast(msg);
     drift.draw(driftCtx, t, w, h);
 
     frameMs = frameMs * 0.95 + ms * 0.05;
@@ -388,13 +464,17 @@ function frame(now: number) {
     if (now - noteAt > 300) {
       noteAt = now;
       $('note-line').textContent = `Reach ${drift.reach + 1} · ${Math.round(drift.distance)} m rowed`;
+      const d = daylight(drift.boat.z);
+      $('hour-name').textContent = hourName(d);
+      $('hour-dot').style.setProperty('--hour', hourColor(d));
     }
   }
   requestAnimationFrame(frame);
 requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('preload')));
 }
 
-setSeed(seed, !!params.get('seed'));
+buildLights();
+setSeed(seed, !!params.get('seed'), true);
 setAnimate(animate);
 if (params.get('mode') === 'drift') enterDrift(true);
 requestAnimationFrame(frame);
