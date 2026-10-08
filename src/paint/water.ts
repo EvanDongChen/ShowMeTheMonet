@@ -1,6 +1,6 @@
 // The pond surface: the bank mirrored upside down and broken by ripples, pale glints of sky, and
 // the reflection of the footbridge.
-import { darken, mix } from '../core/color';
+import { darken, mix, type RGB } from '../core/color';
 import { flat, ramp, touch } from '../core/dab';
 import { accent } from './foliage';
 import { lerp } from '../core/math';
@@ -63,7 +63,47 @@ export function planWater(p: TilePlan) {
     }
   }
 
+  planWaterDetail(p);
   planBridgeReflection(p);
+}
+
+/**
+ * The open water between the rafts, worked up close as Monet works it: bright yellow-green streaks
+ * where sunlit leaves are mirrored, deep violet-blue where the shade is, and pale horizontal
+ * patches of sky, all in small strokes of strong contrast. Pads are painted over it later, so
+ * only open water gets these touches.
+ */
+function planWaterDetail(p: TilePlan) {
+  const g = p.g, s = g.series, sx = 6, sy = 4, c = cells(p, sx, sy);
+  for (let i = c.i0; i <= c.i1; i++) {
+    for (let j = c.j0; j <= c.j1; j++) {
+      const { rng, key } = cellRng(p, L.WATER_DETAIL, i, j);
+      const x = (i + rng.random()) * sx, y = (j + rng.random()) * sy, wl = g.waterLine(x);
+      if (y < wl + 3 || !near(p, x, y, 24) || g.covered(x, y)) continue;
+      const d = g.depth(y);
+      if (!rng.chance(lerp(0.55, 0.75, d))) continue;
+      // What the water mirrors here, sharpened into vertical streaks by a tall, narrow noise.
+      const light = g.foliageLight(x, 2 * wl - y) + g.noise.noise2(x / 13, y / 46 + 21) * 0.32;
+      const sky = g.noise.noise2(x / 130, y / 26 + 5) + rng.range(-0.2, 0.2) > 0.42;
+      let col: RGB, vertical: boolean;
+      if (sky) {
+        col = mix(mix(ramp(s.glint, rng.random()), rng.chance(0.4) ? s.accent[1] : s.air, rng.range(0.1, 0.35)), reflection(p, x, y), rng.range(0.3, 0.5));
+        vertical = false;
+      } else if (light > 0.62) {
+        col = mix(ramp(s.foliage, light + rng.range(0, 0.15)), ramp(s.water, 0.6), 0.15);
+        vertical = rng.chance(0.75);
+      } else if (light < 0.42) {
+        col = mix(ramp(s.water, rng.range(0, 0.15)), s.accent[rng.int(0, 1)], rng.range(0.15, 0.4));
+        vertical = rng.chance(0.6);
+      } else {
+        col = accent(rng, s, reflection(p, x, y), 0.1, 0.3);
+        vertical = rng.chance(0.75);
+      }
+      const len = (vertical ? lerp(6, 22, d) : lerp(8, 30, d)) * Math.exp(rng.bell() * 0.3), w = lerp(1.8, 5.5, d) * rng.range(0.75, 1.2);
+      const ang = vertical ? Math.PI / 2 + rng.range(-0.14, 0.14) : rng.range(-0.08, 0.08);
+      push(p, L.WATER_DETAIL, key, (ctx) => touch(ctx, rng, x, y, len, w, ang, col, sky ? 0.6 : 0.85));
+    }
+  }
 }
 
 /** The arch reflected upside down below the bank, broken into dashes by the ripples. */
