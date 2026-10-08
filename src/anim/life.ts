@@ -368,37 +368,26 @@ export class Life {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // The leaves and willows sway, everywhere but the bridge.
+    // The leaves and willows sway everywhere, in front of and behind the bridge. The bridge is painted
+    // into the same picture, so where it stands the sway is much smaller and capped: the plants around
+    // and behind it still answer the cursor, while the bridge only trembles.
+    const b = g.bridge, inBridge = (x: number, y: number) => Math.abs(x - b.cx) < b.span / 2 + 6 && y > g.deckY(x) - b.railH - 12 && y < g.deckY(x) + b.thick * 1.6;
     ctx.save();
-    const b = g.bridge;
-    ctx.beginPath();
-    ctx.rect(-10, -10, W + 20, wt + 10);
-    const x0 = b.cx - b.span / 2 - 6, x1 = b.cx + b.span / 2 + 6, n = Math.max(2, Math.ceil((x1 - x0) / 40));
-    for (let i = 0; i <= n; i++) {
-      const x = x0 + ((x1 - x0) * i) / n, y = g.deckY(x) - b.railH - 12;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    for (let i = n; i >= 0; i--) {
-      const x = x0 + ((x1 - x0) * i) / n;
-      ctx.lineTo(x, g.deckY(x) + b.thick * 1.6);
-    }
-    ctx.closePath();
-    ctx.clip('evenodd');
     for (let y = 0; y < wt; y += ROW) {
       const h = Math.min(ROW, wt - y), env = Math.pow(Math.sin(Math.PI * (y / wt)), 0.8), j = Math.min(GH - 1, Math.floor(y / ROW));
       for (let i = 0; i < cols; i++) {
         const cx = i * cw, gust = 0.65 + 0.35 * Math.sin(t * 0.35 + cx * 0.004), willow = 1 + 1.3 * g.willow(cx + cw / 2);
         const wind = env * gust * willow * (2.6 * Math.sin(t * 0.9 + y * 0.012 + cx * 0.006) + 1.1 * Math.sin(t * 1.7 + y * 0.03 + cx * 0.01));
-        const push = (0.5 + 0.5 * env) * (0.7 + 0.5 * willow);
+        const push = (0.5 + 0.5 * env) * (0.7 + 0.5 * willow), yc = y + h / 2;
+        const calm = (x: number) => (inBridge(x, yc) ? 0.28 : 1), cap = (v: number, x: number) => (inBridge(x, yc) ? clamp(v, -3.2, 3.2) : v);
         // Where the cursor has set the leaves swinging, draw them in narrow slices so they bend rather than step.
         if (Math.abs(grid[j * GW + i]) + Math.abs(grid[j * GW + Math.min(cols - 1, i + 1)]) > 1.2) {
           for (let q = 0; q < sub; q++) {
             const sx = cx + q * sw;
-            ctx.drawImage(picture, sx * k, y * k, (sw + 1) * k, (h + 0.6) * k, sx + wind + gridAt(sx + sw / 2, j) * push, y, sw + 1, h + 0.6);
+            ctx.drawImage(picture, sx * k, y * k, (sw + 1) * k, (h + 0.6) * k, sx + cap((wind + gridAt(sx + sw / 2, j) * push) * calm(sx + sw / 2), sx + sw / 2), y, sw + 1, h + 0.6);
           }
         } else {
-          ctx.drawImage(picture, cx * k, y * k, (cw + 1) * k, (h + 0.6) * k, cx + wind + grid[j * GW + i] * push, y, cw + 1, h + 0.6);
+          ctx.drawImage(picture, cx * k, y * k, (cw + 1) * k, (h + 0.6) * k, cx + cap((wind + grid[j * GW + i] * push) * calm(cx + cw / 2), cx + cw / 2), y, cw + 1, h + 0.6);
         }
       }
     }
