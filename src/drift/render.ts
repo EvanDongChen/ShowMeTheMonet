@@ -13,6 +13,7 @@ import { clamp, lerp } from '../core/math';
 import { cardId } from '../paint/cards';
 import type { Garden } from '../world/garden';
 import { Boat, EYE } from './camera';
+import { daylight } from './daylight';
 import { River, type Placed } from './river';
 import { PaintedWater, paintSky, weavePattern, type Sky } from './water';
 
@@ -34,6 +35,8 @@ export interface View {
   hy: number;
   x: number; z: number; eye: number;
   sin: number; cos: number;
+  /** The hour (see daylight.ts) and how open the sky is overhead, all 0..1. */
+  warm: number; dusk: number; dawn: number; open: number;
 }
 
 /**
@@ -69,7 +72,10 @@ export class DriftRenderer {
     const yaw = boat.viewYaw;
     // A wide lens on landscape screens, a little wider still on tall ones so the banks stay in view.
     const f = Math.max(w, h * 1.1) / 2 / Math.tan((72 * Math.PI) / 360);
-    return { w, h, f, hy: h * 0.44 + boat.pitch * h * 0.12, x: boat.x, z: boat.z, eye: EYE + boat.heave, sin: Math.sin(yaw), cos: Math.cos(yaw) };
+    return {
+      w, h, f, hy: h * 0.44 + boat.pitch * h * 0.12, x: boat.x, z: boat.z, eye: EYE + boat.heave, sin: Math.sin(yaw), cos: Math.cos(yaw),
+      ...daylight(boat.z), open: this.river.openness(boat.z + 8),
+    };
   }
 
   /** Card ids in the order they're needed: what's in view nearest first, then everything else. */
@@ -106,7 +112,7 @@ export class DriftRenderer {
     const sb = this.skyBuf.getContext('2d')!;
     sb.clearRect(0, 0, w, sh);
     this.skyPlate(sb, v, off, tw);
-    this.sunGlow(sb, v, off, tw, 0.34);
+    this.sunGlow(sb, v, off, tw, 0.34 * (1 + v.warm * 0.6 + v.open * 0.5));
     behind?.(sb, v);
     const water = ctx.createLinearGradient(0, v.hy, 0, h);
     water.addColorStop(0, css(mix(s.air, ramp(s.water, 0.6), 0.5)));
@@ -163,12 +169,29 @@ export class DriftRenderer {
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, w, h);
 
+    this.grade(ctx, v);
+
     // The weave of the canvas showing through the paint.
     ctx.globalCompositeOperation = 'overlay';
     ctx.globalAlpha = 0.16;
     ctx.fillStyle = this.weave;
     ctx.fillRect(0, 0, w, h);
     ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /** The colour of the hour laid over everything: gold in the afternoon, violet at dusk, pink at dawn. */
+  private grade(ctx: CanvasRenderingContext2D, v: View) {
+    const warm = v.warm * (this.g.series.name === 'evening' ? 0.5 : 1), fill = (op: GlobalCompositeOperation, col: [number, number, number], a: number) => {
+      if (a < 0.01) return;
+      ctx.globalCompositeOperation = op;
+      ctx.fillStyle = css(col, a);
+      ctx.fillRect(0, 0, v.w, v.h);
+    };
+    fill('soft-light', [255, 168, 86], warm * 0.55);
+    fill('multiply', [150, 140, 196], v.dusk * 0.4);
+    fill('soft-light', [70, 60, 150], v.dusk * 0.5);
+    fill('screen', [255, 196, 210], v.dawn * 0.16);
     ctx.globalCompositeOperation = 'source-over';
   }
 
@@ -295,7 +318,7 @@ export class DriftRenderer {
 
   /** Sunlight falling through the canopy onto the water: soft slanted shafts that drift a little. */
   private shafts(ctx: CanvasRenderingContext2D, v: View, off: number, tw: number, t: number) {
-    const s = this.g.series, strength = s.name === 'evening' ? 1.7 : s.name === 'mist' ? 1.4 : 1;
+    const s = this.g.series, strength = (s.name === 'evening' ? 1.7 : s.name === 'mist' ? 1.4 : 1) * (1 + v.warm * 0.8 + v.open * 1.2);
     const col = lighten(mix(s.glint[2], [255, 244, 214], 0.5), 0.02);
     ctx.save();
     ctx.globalCompositeOperation = 'screen';

@@ -69,6 +69,19 @@ export class River {
     return k === 0 || (Math.abs(k) >= 2 && hashFloat(this.g.s, k, 0xb41d6e) < 0.24);
   }
 
+  /** Is this reach a clearing: open sky, no overhanging branches, tall trees thinned, flowers thick? */
+  isClearing(k: number) {
+    return k !== 0 && !this.hasBridge(k) && hashFloat(this.g.s, k, 0xc1ea) < 0.2;
+  }
+
+  /** How open the sky is at z, 0..1, eased across the reaches' ends so the light changes gradually. */
+  openness(z: number) {
+    const f = (k: number) => (this.isClearing(k) ? 1 : 0), k = River.reachOf(z), u = z / REACH - k;
+    if (u < 0.15) return lerp(f(k - 1), f(k), smoothstep(0, 0.15, u));
+    if (u > 0.85) return lerp(f(k), f(k + 1), smoothstep(0.85, 1, u));
+    return f(k);
+  }
+
   /** At most one bridge in any two neighbouring reaches. */
   hasBridge(k: number) {
     return this.bridgeRaw(k) && (k === 0 || !this.bridgeRaw(k - 1));
@@ -96,6 +109,7 @@ export class River {
   private build(k: number): Reach {
     const g = this.g, z0 = k * REACH, cards: Placed[] = [], glints: Glint[] = [], dapples: Dapple[] = [];
     let bridge: Placed | null = null, bz = NaN;
+    const clearing = this.isClearing(k);
 
     if (this.hasBridge(k)) {
       const r = g.rng(0x7e4c, k, 99);
@@ -125,8 +139,10 @@ export class River {
           const z = z0 + (i + r.random()) * row.step, kind = row.pick(r.random());
           const off = r.range(row.off[0], row.off[1]), scale = r.range(row.scale[0], row.scale[1]);
           const variant = r.int(0, 99), flip = r.chance(0.5), elev = row.elev ? r.range(row.elev[0], row.elev[1]) : 0;
+          // A clearing has no branches overhead and only a few tall trees.
+          const open = clearing && (kind === 'canopy' || ((kind === 'willow' || kind === 'poplar') && r.chance(0.7)));
           // Keep the banks clear where a bridge lands, except for its far backdrop (and the bridge's own sky).
-          if (!kind || ((ri < 4 || kind === 'canopy') && Math.abs(z - bz) < (kind === 'canopy' ? 5 : 2.5))) continue;
+          if (!kind || open || ((ri < 4 || kind === 'canopy') && Math.abs(z - bz) < (kind === 'canopy' ? 5 : 2.5))) continue;
           // Now and then a branch reaches clear across, so there is something overhead as we pass.
           const across = kind === 'canopy' && r.chance(0.12);
           const x = across ? this.center(z) + r.range(-3, 3) : this.center(z) + side * (this.half(z) + off + (kind === 'backdrop' || ri === 0 ? 0 : CARDS[kind].w * scale * 0.3));
@@ -143,7 +159,7 @@ export class River {
 
     // Rafts of lilies drifting all over the pond, thickest near the banks, with open water between.
     const r = g.rng(0x7e4c, k, 0x1a9);
-    for (let c = r.int(12, 19); c > 0; c--) {
+    for (let c = Math.round(r.int(12, 19) * (clearing ? 1.4 : 1)); c > 0; c--) {
       const cz = z0 + r.random() * REACH, u = (r.chance(0.55) ? r.range(0.4, 0.95) : r.range(-0.8, 0.8)) * (r.chance(0.5) ? 1 : -1);
       const half = this.half(cz), cx = this.center(cz) + u * half, rad = r.range(1.5, 5);
       for (let n = r.int(18, 46); n > 0; n--) {
@@ -165,13 +181,36 @@ export class River {
       if (bloom) cards.push(this.card('bloom', bv % CARDS.bloom.variants, x, z + 0.01, size, false));
     }
 
+    // In a clearing the banks are thick with flower beds, in the sun.
+    if (clearing) {
+      const cl = g.rng(0x7e4c, k, 0xc1ea);
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 10; i++) {
+          const z = z0 + ((i + cl.random()) * REACH) / 10, x = this.center(z) + side * (this.half(z) + cl.range(0.3, 2.6));
+          cards.push(this.card('flowers', cl.int(0, CARDS.flowers.variants - 1), x, z, cl.range(0.9, 1.5), cl.chance(0.5)));
+        }
+      }
+    }
+
+    // Landmarks, something to row toward: a boat tied up at the bank, a stone lantern on the shore.
+    const lm = g.rng(0x7e4c, k, 0x1a4d);
+    const spot = () => ({ z: z0 + lm.range(3, REACH - 3), side: lm.chance(0.5) ? 1 : -1 });
+    if (lm.chance(0.22)) {
+      const { z, side } = spot();
+      if (!(Math.abs(z - bz) < 4)) cards.push(this.card('boat', lm.int(0, CARDS.boat.variants - 1), this.center(z) + side * (this.half(z) - lm.range(0.7, 1.5)), z, lm.range(1, 1.3), lm.chance(0.5)));
+    }
+    if (lm.chance(0.28)) {
+      const { z, side } = spot();
+      if (!(Math.abs(z - bz) < 4)) cards.push(this.card('lantern', lm.int(0, CARDS.lantern.variants - 1), this.center(z) + side * (this.half(z) + lm.range(0.4, 1.4)), z, lm.range(0.95, 1.25), lm.chance(0.5)));
+    }
+
     // Glints of sky on the open water.
     for (let i = 0; i < 60; i++) {
       const z = z0 + r.random() * REACH, u = r.range(-0.95, 0.95);
       glints.push({ x: this.center(z) + u * this.half(z), z, len: r.range(0.3, 1.4), tone: r.random(), dark: r.chance(0.55) });
     }
 
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < (clearing ? 60 : 26); i++) {
       const z = z0 + r.random() * REACH;
       dapples.push({ x: this.center(z) + r.range(-0.95, 0.95) * this.half(z), z, r: r.range(0.9, 2.6), tone: r.random() });
     }

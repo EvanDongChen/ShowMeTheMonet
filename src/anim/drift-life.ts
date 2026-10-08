@@ -1,7 +1,7 @@
 // Life around the boat: rings from the oars, the bow and now and then a rising fish, pollen hanging in
 // the light, petals afloat, dragonflies and butterflies, and birds crossing the sky. Drawn over the
 // drift's cards (the birds, behind them); never changes what a seed paints.
-import { css, lighten, type RGB } from '../core/color';
+import { css, lighten, mix, type RGB } from '../core/color';
 import type { Boat } from '../drift/camera';
 import type { View } from '../drift/render';
 import type { Garden } from '../world/garden';
@@ -22,6 +22,8 @@ export class DriftLife {
   private strokes = 0;
   private wake = 0;
   quality = 1;
+  /** How far into dusk the view is (0..1): the pollen turns to fireflies. */
+  private dusk = 0;
 
   constructor(private g: Garden) {}
 
@@ -64,7 +66,7 @@ export class DriftLife {
     for (const b of this.birds) b.az += b.speed * dt;
 
     // Motes and petals live in a box that travels with the boat; whatever falls out re-enters ahead.
-    const nMotes = Math.round(70 * this.quality), nPetals = Math.round(30 * this.quality);
+    const nMotes = Math.round(70 * this.quality * (1 + this.dusk * 0.8)), nPetals = Math.round(30 * this.quality);
     while (this.motes.length < nMotes) this.motes.push(this.mote(boat, true));
     this.motes.length = nMotes;
     for (const m of this.motes) {
@@ -138,6 +140,7 @@ export class DriftLife {
   }
 
   draw(ctx: CanvasRenderingContext2D, v: View, t: number) {
+    this.dusk = v.dusk;
     const proj = (x: number, y: number, z: number) => {
       const dx = x - v.x, dz = z - v.z, zr = dx * v.sin + dz * v.cos;
       if (zr < 0.4) return null;
@@ -173,8 +176,8 @@ export class DriftLife {
     for (const m of this.motes) {
       const p = proj(m.x, m.y, m.z);
       if (!p || p.sx < 0 || p.sx > v.w || p.sy < 0 || p.sy > v.h) continue;
-      const tw = 0.5 + 0.5 * Math.sin(t * 2 + m.ph * 3), r = Math.min(2.6, Math.max(0.8, 0.012 * p.sc));
-      ctx.fillStyle = css(s.glint[2], 0.25 + 0.35 * tw);
+      const tw = 0.5 + 0.5 * Math.sin(t * 2 + m.ph * 3), r = Math.min(2.6, Math.max(0.8, 0.012 * p.sc)) * (1 + v.dusk * 0.9);
+      ctx.fillStyle = css(mix(s.glint[2], [255, 226, 120], v.dusk), (0.25 + 0.35 * tw) * (1 + v.dusk * 1.2));
       ctx.beginPath();
       ctx.arc(p.sx, p.sy, r, 0, Math.PI * 2);
       ctx.fill();

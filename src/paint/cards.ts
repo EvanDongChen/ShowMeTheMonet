@@ -14,7 +14,7 @@ import { plantTouch } from './foliage';
 import { drawPad } from './lilies';
 import { context2d, makeCanvas, type AnyCanvas } from './tiles';
 
-export type CardKind = 'reeds' | 'iris' | 'grass' | 'flowers' | 'shrub' | 'willow' | 'poplar' | 'backdrop' | 'bridge' | 'pad' | 'bloom' | 'canopy';
+export type CardKind = 'reeds' | 'iris' | 'grass' | 'flowers' | 'shrub' | 'willow' | 'poplar' | 'backdrop' | 'bridge' | 'pad' | 'bloom' | 'canopy' | 'boat' | 'lantern';
 
 export interface CardSpec { w: number; h: number; variants: number; ppm: number; }
 
@@ -32,6 +32,8 @@ export const CARDS: Record<CardKind, CardSpec> = {
   pad: { w: 1, h: 0.4, variants: 8, ppm: 144 },
   bloom: { w: 0.55, h: 0.4, variants: 6, ppm: 160 },
   canopy: { w: 6, h: 5.4, variants: 4, ppm: 44 },
+  boat: { w: 3.4, h: 1.2, variants: 3, ppm: 64 },
+  lantern: { w: 0.9, h: 1.7, variants: 3, ppm: 90 },
 };
 
 export const CARD_KINDS = Object.keys(CARDS) as CardKind[];
@@ -135,6 +137,56 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
     mass(c, 0.2, 0.4, (x, y) => Math.min(inside(x, y), (h * 0.95 - y)),
       (x, y) => 0.8 - (y / h) * 0.45 - (x / w) * 0.25 + g.noise.noise2(x + c.v * 9, y * 0.5) * 0.3,
       () => Math.PI / 2 + c.rng.range(-0.2, 0.2), c.s.foliage, () => 1);
+  },
+
+  boat(c) {
+    // A rowboat tied up at the bank, riding low, with its oars shipped. Its variants differ in paint.
+    const { ctx, rng, w, h, s } = c;
+    const paints: RGB[] = [[34, 62, 54], [52, 74, 112], [96, 70, 52]], paint = paints[c.v % 3];
+    const hull = mix(ramp(s.bridge, 0.3), paint, 0.55), plank = mix([214, 196, 156], s.air, 0.25), rail = ramp(s.bridge, 0.88);
+    const top = (u: number) => h * (0.56 - 0.3 * Math.pow(2 * u - 1, 2)), bot = (u: number) => h * (0.95 - 0.58 * Math.pow(2 * u - 1, 4));
+    for (let x = 0.12; x < w - 0.1; x += 0.1) {
+      const u = x / w, a = Math.atan2(top(u + 0.02) - top(u - 0.02), 0.04 * w);
+      for (let y = top(u); y < bot(u); y += 0.075) {
+        const t = (y - top(u)) / Math.max(0.05, bot(u) - top(u));
+        touch(ctx, rng, x + rng.range(-0.03, 0.03), y, 0.2, 0.09, a + rng.range(-0.08, 0.08), mix(ramp(s.bridge, 0.5 - t * 0.35), hull, 0.5 + t * 0.4 + rng.range(-0.1, 0.1)), 0.95);
+      }
+      flat(ctx, rng, x, top(u), 0.18, 0.045, a, rail, 0.9);
+    }
+    // The planking inside, a seat across, and a pair of oars laid over the side.
+    flat(ctx, rng, w * 0.5, top(0.5) + 0.04, w * 0.5, 0.05, 0, plank, 0.9);
+    flat(ctx, rng, w * 0.47, top(0.47) + 0.02, 0.06, 0.14, 0, mix(plank, hull, 0.4), 0.9);
+    for (const [u0, u1] of [[0.18, 0.78], [0.26, 0.84]]) {
+      dabLine(ctx, rng, [[w * u0, top(u0) - 0.28], [w * u1, top(u1) - 0.04]], 0.035, mix([166, 134, 96], hull, 0.2), 0.95, 0.1);
+    }
+  },
+
+  lantern(c) {
+    // A stone lantern, as stands at the water's edge in a Japanese garden: pedestal, shaft, a little
+    // lit chamber and a wide hat of a roof, mossy where the damp reaches it.
+    const { ctx, rng, w, h, s } = c, cx = w / 2, stone = mix([156, 154, 146], s.air, 0.3), moss = ramp(s.reed, 0.55);
+    const block = (y0: number, y1: number, hw: number) => {
+      for (let y = y0; y < y1; y += 0.05) {
+        const col = mix(stone, rng.chance(0.16) ? moss : [255, 255, 255], rng.range(0, 0.2));
+        touch(ctx, rng, cx - hw * 0.5, y, hw * 1.15, 0.07, rng.range(-0.04, 0.04), mix(col, [255, 255, 255], 0.12), 0.95);
+        touch(ctx, rng, cx + hw * 0.5, y, hw * 1.15, 0.07, rng.range(-0.04, 0.04), mix(col, s.accent[0], 0.22), 0.95);
+      }
+    };
+    block(h - 0.28, h, 0.3);
+    block(h - 0.72, h - 0.28, 0.1);
+    block(h - 0.82, h - 0.72, 0.26);
+    // The chamber, lit from within.
+    block(h - 1.18, h - 0.82, 0.17);
+    const glow = ctx.createRadialGradient(cx, h - 1, 0, cx, h - 1, 0.5);
+    glow.addColorStop(0, 'rgba(255, 214, 130, 0.5)');
+    glow.addColorStop(1, 'rgba(255, 214, 130, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - 0.5, h - 1.5, 1, 1);
+    dab(ctx, cx, h - 1, 0.1, 0.16, Math.PI / 2, [255, 222, 140], 0.95);
+    // The roof, broad at the eaves and narrowing to a knob.
+    for (let y = h - 1.42; y < h - 1.18; y += 0.045) block(y, y + 0.045, 0.1 + (y - (h - 1.42)) * 1.25);
+    dab(ctx, cx, h - 1.47, 0.09, 0.09, 0, stone, 0.95);
+    for (let i = 0; i < 6; i++) dab(ctx, cx + rng.range(-0.28, 0.28), h - rng.range(0.02, 0.2), rng.range(0.06, 0.14), 0.045, rng.range(-0.3, 0.3), moss, 0.8);
   },
 
   canopy(c) {
