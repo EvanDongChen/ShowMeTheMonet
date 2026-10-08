@@ -6,11 +6,13 @@
 // strokes as the rest), and scatters petals that float away; passing through the leaves shakes petals
 // loose. Planted lilies send out the odd ring, and call the
 // dragonfly to hover over them. What has been planted is kept for the next visit, per canvas.
+// Fish live under the surface (`fish.ts`): hold still over the water and they come to see.
 //
 // Drawn on its own canvas over the finished picture; never changes what a seed paints.
 import { css, lighten, type RGB } from '../core/color';
 import { clamp, lerp } from '../core/math';
 import { Rng } from '../core/rng';
+import { School, type FishPond } from './fish';
 import { drawFlower, drawPad } from '../paint/lilies';
 import { H, W, type Garden, type Pad } from '../world/garden';
 
@@ -27,6 +29,8 @@ interface Planted extends Saved {
   /** Where the lily sits in its sprites, in painting units. */
   bx: number; by: number; sw: number; sh: number;
   nextRing: number;
+  /** When a fish last nosed at it, setting it rocking. */
+  nudge: number;
 }
 
 const MAX_PLANTED = 80;
@@ -60,6 +64,8 @@ export class Life {
   private wakes: { x: number; y: number; t: number; s: number }[] = [];
   private lastWake = { x: -999, y: -999 };
   private plantAt = 0;
+  private school: School;
+  private pond: FishPond;
   /** Is the pond being tended (the pointer is over the painting and the mode is on)? */
   tending = false;
 
@@ -72,6 +78,19 @@ export class Life {
       this.sparks.push({ x, y, ph: Math.random() * 10, speed: 0.6 + Math.random() * 1.2, len: lerp(6, 26, d) });
     }
     for (const s of this.load()) this.planted.push(this.grow(s, -10));
+    this.school = new School(g);
+    // What the fish see of the pond, kept live: the arrays are the pond's own.
+    const life = this, cur = this.cur;
+    this.pond = {
+      t: 0,
+      cursor: {
+        get x() { return cur.x; }, get y() { return cur.y; }, get on() { return cur.on && life.tending; },
+        get speed() { return Math.hypot(life.cvx, life.cvy); }, get still() { return life.t - life.lastMove; },
+      },
+      get planted() { return life.planted; },
+      get petals() { return life.petals; },
+      ring: (x, y, size, l, delay = 0) => this.rings.push({ x, y, age: -delay, life: l, size }),
+    };
   }
 
   private onPad(x: number, y: number) {
@@ -131,7 +150,7 @@ export class Life {
     // The planted bloom is larger than the ones in the painting, so it reads as something you did.
     const big: Pad = { ...pad, w: s.w * 1.5 };
     return {
-      ...s, born, bx, by, sw, sh, nextRing: this.t + 5 + Math.random() * 8,
+      ...s, born, bx, by, sw, sh, nextRing: this.t + 5 + Math.random() * 8, nudge: -99,
       pad: make((ctx) => drawPad(ctx, new Rng(s.seed), pad, g.series)),
       bloom: make((ctx) => drawFlower(ctx, new Rng(s.seed + 1), big, g.series)),
     };
@@ -155,7 +174,9 @@ export class Life {
     if (!this.tending || d < 0.5) return;
     // On the water the cursor sends ripples spreading out from where it passes.
     if (this.onWater(x, y) && Math.hypot(x - this.lastWake.x, y - this.lastWake.y) > 26) {
-      this.wakes.push({ x, y, t: this.t, s: clamp(Math.hypot(this.cvx, this.cvy) / 500, 0.45, 1) });
+      const s = clamp(Math.hypot(this.cvx, this.cvy) / 500, 0.45, 1);
+      this.wakes.push({ x, y, t: this.t, s });
+      if (s > 0.8) this.school.startle(x, y, 140 * s);
       if (this.wakes.length > 14) this.wakes.shift();
       this.lastWake = { x, y };
     }
@@ -189,6 +210,8 @@ export class Life {
       this.planted.push(this.grow({ x, y, w, flower, tone: 0.3 + Math.random() * 0.7, notch: (Math.random() - 0.5) * 2 * Math.PI, seed: (Math.random() * 2 ** 30) | 0 }, this.t));
       if (this.planted.length > MAX_PLANTED) this.planted.shift();
       for (let i = 0; i < 2; i++) this.rings.push({ x, y, age: -i * 0.22, life: 2.2, size: w * (0.9 + i * 0.45) });
+      // The plop scatters the fish nearby; they come back to it later.
+      this.school.startle(x, y, 110);
       for (let i = 0; i < 3; i++) this.petal(x + (Math.random() - 0.5) * w, y, true);
       this.save();
       return;
@@ -219,6 +242,8 @@ export class Life {
     const g = this.g;
     this.t += dt;
     this.physics(dt);
+    this.pond.t = this.t;
+    this.school.update(dt, this.pond);
     if (Math.random() < dt * 0.7) {
       const x = Math.random() * W, y = lerp(g.waterTop + 10, H - 10, Math.random());
       if (!this.onPad(x, y)) this.rings.push({ x, y, age: 0, life: 3 + Math.random() * 2, size: lerp(14, 60, g.depth(y)) });
@@ -325,17 +350,21 @@ export class Life {
       const ep = gp * gp * (3 - 2 * gp);
       // The bloom opens with a little overshoot, like something that wanted to.
       const ef = gf === 0 ? 0 : 1 + 2.1 * Math.pow(gf - 1, 3) + 1.1 * Math.pow(gf - 1, 2);
+      // A fish nosing at it sets it rocking, and it settles.
+      const n = now - p.nudge, rock = still || n > 3 ? 0 : Math.sin(n * 8) * Math.exp(-n * 1.8);
+      const bob = still ? 0 : Math.sin(now * 1.1 + p.seed) * lerp(0.6, 2.2, this.g.depth(p.y)) + rock * p.w * 0.04;
       if (ep > 0.01) {
         ctx.save();
-        ctx.translate(p.x, p.y + (still ? 0 : Math.sin(now * 1.1 + p.seed) * lerp(0.6, 2.2, this.g.depth(p.y))));
+        ctx.translate(p.x + rock * p.w * 0.05, p.y + bob);
+        ctx.rotate(rock * 0.06);
         ctx.scale(ep, ep);
         ctx.drawImage(p.pad, -p.bx, -p.by, p.sw, p.sh);
         ctx.restore();
       }
       if (ef > 0.01) {
         ctx.save();
-        ctx.translate(p.x, p.y + (still ? 0 : Math.sin(now * 1.1 + p.seed) * lerp(0.6, 2.2, this.g.depth(p.y))));
-        ctx.rotate(still ? 0 : Math.sin(now * 0.9 + p.seed) * 0.03);
+        ctx.translate(p.x + rock * p.w * 0.05, p.y + bob);
+        ctx.rotate(still ? 0 : Math.sin(now * 0.9 + p.seed) * 0.03 + rock * 0.12);
         ctx.scale(ef, ef);
         ctx.drawImage(p.bloom, -p.bx, -p.by, p.sw, p.sh);
         ctx.restore();
@@ -433,6 +462,8 @@ export class Life {
   draw(ctx: CanvasRenderingContext2D, t: number, picture?: HTMLCanvasElement, bridge?: HTMLCanvasElement) {
     const s = this.g.series;
     if (picture) this.drawLiving(ctx, picture, t);
+    // The fish swim under everything on the water, and under the bridge.
+    this.school.draw(ctx);
     if (bridge) ctx.drawImage(bridge, 0, 0, W, H);
     for (const sp of this.sparks) {
       const a = Math.max(0, Math.sin(t * sp.speed + sp.ph)) ** 3;
