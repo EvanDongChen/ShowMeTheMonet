@@ -54,12 +54,12 @@ export function accent(rng: Rng, s: Series, col: RGB, chance: number, light: num
 const size = (rng: Rng, base: number) => base * Math.exp(rng.bell() * 0.42);
 
 /** Which planting a dab belongs to: willow (0), dark shrub (1) or pale bush (2). Sharpened so stands stay distinct. */
-function pickPlant(w: [number, number, number], roll: number) {
+export function pickPlant(w: [number, number, number], roll: number) {
   const a = w[0] * w[0], b = w[1] * w[1], c = w[2] * w[2], r = roll * (a + b + c);
   return r < a ? 0 : r < a + b ? 1 : 2;
 }
 
-interface Leaf { col: RGB; len: number; wide: number; ang: number; }
+export interface Leaf { col: RGB; len: number; wide: number; ang: number; }
 
 /**
  * One touch of the bank at (x, y), in the manner of whatever grows there. Willow is long, thin,
@@ -69,9 +69,14 @@ interface Leaf { col: RGB; len: number; wide: number; ang: number; }
  * Always draws the same number of values, so the stream after it doesn't shift.
  */
 function leaf(g: Garden, rng: Rng, x: number, y: number, base: number, light: number, jitter: number): Leaf {
-  const s = g.series, kind = pickPlant(g.plants(x, y), rng.random());
+  const kind = pickPlant(g.plants(x, y), rng.random());
+  return plantTouch(g.series, kind, rng, base, light, jitter, g.noise.noise2(x / 110, y / 110 + 40));
+}
+
+/** The touch itself, for a given planting. `sway` is a slow noise field so neighbouring touches agree. */
+export function plantTouch(s: Series, kind: number, rng: Rng, base: number, light: number, jitter: number, sway: number): Leaf {
   const roll = rng.random(), jit = rng.range(-1, 1), len0 = size(rng, base), wr = rng.range(0.3, 0.6), aj = rng.range(-1, 1);
-  const sway = g.noise.noise2(x / 110, y / 110 + 40), f = (t: number) => ramp(s.foliage, t);
+  const f = (t: number) => ramp(s.foliage, t);
   const l = light + [0, -0.22, 0.14][kind] + jit * jitter;
   let col: RGB;
   if (kind === 0) {
@@ -79,7 +84,7 @@ function leaf(g: Garden, rng: Rng, x: number, y: number, base: number, light: nu
     return { col, len: len0 * 1.6, wide: len0 * 1.6 * wr * 0.55, ang: Math.PI / 2 + sway * 0.25 + aj * 0.22 };
   }
   if (kind === 1) {
-    col = roll < 0.4 ? mix(f(l * 0.8), s.accent[3], 0.2) : roll < 0.7 ? mix(mix(s.accent[2], s.foliage[1], 0.4), f(l), 0.2) : roll < 0.84 ? mix(s.accent[0], f(l), 0.28) : f(0.05 + (jit + 1) * 0.1);
+    col = roll < 0.4 ? mix(f(l * 0.8), s.accent[3], 0.2) : roll < 0.72 ? mix(mix(mix(s.accent[2], s.accent[3], 0.35), s.foliage[1], 0.45), f(l), 0.2) : roll < 0.82 ? mix(s.accent[0], f(l), 0.22) : f(0.05 + (jit + 1) * 0.1);
     return { col, len: len0 * 0.8, wide: len0 * 0.8 * wr * 1.3, ang: sway + aj * Math.PI * 0.5 };
   }
   col = roll < 0.14 ? f(0.12 + (jit + 1) * 0.1) : roll < 0.5 ? f(l + 0.1) : roll < 0.74 ? mix(s.accent[3], f(1), 0.5) : roll < 0.9 ? mix(s.accent[1], f(0.95), 0.5) : mix(s.accent[2], f(0.9), 0.5);

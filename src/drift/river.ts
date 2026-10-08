@@ -139,7 +139,7 @@ export class River {
       for (let n = r.int(10, 30); n > 0; n--) {
         const a = r.random() * Math.PI * 2, d = Math.sqrt(r.random()) * rad;
         const x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d * 1.4;
-        const size = r.range(0.5, 1.15), variant = r.int(0, CARDS.pad.variants - 1), bloom = r.chance(0.13), bv = r.int(0, 99);
+        const size = r.range(0.5, 1.15), variant = r.int(0, CARDS.pad.variants - 1), bloom = r.chance(0.3), bv = r.int(0, 99);
         if (Math.abs(x - this.center(z)) > this.half(z) - 0.3 || Math.abs(z - bz) < 1) continue;
         cards.push(this.card('pad', variant, x, z, size, r.chance(0.5), true));
         if (bloom) cards.push(this.card('bloom', bv % CARDS.bloom.variants, x, z + 0.01, size, false));
