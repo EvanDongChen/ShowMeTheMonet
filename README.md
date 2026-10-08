@@ -23,7 +23,7 @@ Plain TypeScript, Vite and canvas 2D, with no runtime dependencies. The build is
 
 URL parameters: `?seed=…`, `&light=green|rose|mist|evening|autumn` to choose the series, `&mode=drift` to start in the boat, `&animate=0` to keep the easel still.
 
-**Touch the paint** (the spiral on the palette, or `F`) turns the finished painting into wet oil: drag a finger or move the mouse through it and the paint is picked up behind the brush and laid down ahead, with bristle marks in the drag and a little curl from a noise field, so it smears and swirls the way you move. `R` puts the paint back, and switching the mode off does too. A postcard made while it is on keeps your smudges.
+**Stir the painting** (the spiral on the palette, or `B`): the painting is alive, and its strokes of paint stream across it, along the pond's currents and in swirls through the leaves, in colours taken from the painting itself. With the mode on, the cursor drags the strokes into eddies and leaves a trail of fresh paint; ripples spread where it crosses the water, the lilies it brushes past send out rings, flowers glow as it nears them, the dragonfly follows it, and a click splashes a ring of paint outward and scatters petals. The painting underneath is never touched. On a phone, drag across it. After the idea in [Gogh with the Flow](https://github.com/EvanDongChen/GoghWithTheFlow).
 
 **Choosing the light** repaints the same seed in another series (the composition stays, the palette and air change), and the choice travels in the link. **Postcards** frame the finished canvas, or the view from the boat, in a paper border with a handwritten caption (the series, the reach rowed and the hour) and the seed. In the boat, a title card names the place as you slip in, and landmarks are whispered as they come into view.
 
@@ -40,7 +40,6 @@ src/anim/    life.ts (easel: trembling light, rings, petals, a dragonfly) · dri
              sound.ts (the drift's ambience, synthesised)
 src/main.ts  the easel, the palette (and its choice of light) and the loop
 src/postcard.ts  frames a painted canvas as a postcard
-src/anim/flow.ts  "touch the paint": smudging the finished painting
 ```
 
 ### The brush

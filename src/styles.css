@@ -278,15 +278,15 @@ button { font: inherit; color: inherit; }
 .canvas.ready { cursor: pointer; }
 .canvas.ready:hover #picture { filter: brightness(1.04) saturate(1.05); }
 
-/* Touch the paint: the brush is a ring that follows the pointer, and the painting is not a door. */
-.canvas.flow { cursor: none; }
-.canvas.flow:hover #picture { filter: none; }
-.flow-cursor {
+/* Stir the painting: the cursor is a ring of light, and the painting is not a door. */
+.canvas.stirring { cursor: none; }
+.canvas.stirring:hover #picture { filter: none; }
+.stir-cursor {
   position: absolute;
   left: 0;
   top: 0;
-  width: var(--fr, 60px);
-  height: var(--fr, 60px);
+  width: 54px;
+  height: 54px;
   border: 2px solid rgba(255, 250, 235, 0.92);
   border-radius: 50%;
   box-shadow: 0 0 0 1.5px rgba(40, 28, 14, 0.55), inset 0 0 0 1.5px rgba(40, 28, 14, 0.35);
@@ -295,7 +295,7 @@ button { font: inherit; color: inherit; }
   z-index: 6;
   transition: opacity 0.2s ease;
 }
-.flow-cursor.on { opacity: 1; }
+.stir-cursor.on { opacity: 1; }
 
 /* ——— Stepping in ——— */
 
@@ -535,8 +535,8 @@ button { font: inherit; color: inherit; }
 .dab-share { --paint: var(--lilac); }
 .dab-about { --size: 38px; --paint: var(--lily); }
 .dab-light { --paint: #f0d98a; }
-.dab-flow { --paint: #e3a07c; }
-.dab-flow[aria-pressed='true'] { box-shadow: 0 0 0 1.6px #2c1b0e, 0 0 0 5px rgba(255, 236, 200, 0.85), 0 0 20px 5px rgba(255, 196, 140, 0.6), 1px 3px 4px rgba(var(--shadow), 0.3); }
+.dab-stir { --paint: #e3a07c; }
+.dab-stir[aria-pressed='true'] { box-shadow: 0 0 0 1.6px #2c1b0e, 0 0 0 5px rgba(255, 236, 200, 0.85), 0 0 20px 5px rgba(255, 196, 140, 0.6), 1px 3px 4px rgba(var(--shadow), 0.3); }
 .dab-back { --size: 64px; --paint: var(--sage); }
 .dab-pause { --paint: var(--water); }
 .dab-pause[aria-pressed='true'] { --paint: var(--rose); }
