@@ -4,7 +4,7 @@
 // And the person can tend it, just by moving through it: the cursor drifting over the water plants
 // water lilies as it goes, each growing from a bud into a bloom (with its own pad, painted in the same
 // strokes as the rest), and scatters petals that float away; passing through the leaves shakes petals
-// loose. Planted lilies send out the odd ring, glow softly as the cursor nears them, and call the
+// loose. Planted lilies send out the odd ring, and call the
 // dragonfly to hover over them. What has been planted is kept for the next visit, per canvas.
 //
 // Drawn on its own canvas over the finished picture; never changes what a seed paints.
@@ -41,19 +41,15 @@ export class Life {
   private nextFly = 6;
   private t = 0;
   private planted: Planted[] = [];
-  private flowers: Pad[];
   private cur = { x: 0, y: 0, on: false };
   private sprinkleAt = 0;
   /** How far the cursor has travelled since it last planted something, and when it may next. */
   private travelled = 0;
   private plantAt = 0;
-  /** How near the cursor is, eased in and out so glows swell and fade rather than switch. */
-  private presence = 0;
   /** Is the pond being tended (the pointer is over the painting and the mode is on)? */
   tending = false;
 
   constructor(private g: Garden) {
-    this.flowers = g.pads.filter((p) => p.flower >= 0);
     // Sparks sit where the painting left the water open and pale, so the light trembles there.
     for (let tries = 0; this.sparks.length < 90 && tries < 4000; tries++) {
       const x = Math.random() * W, y = lerp(g.waterTop + 8, H, Math.pow(Math.random(), 0.8));
@@ -195,7 +191,6 @@ export class Life {
   update(dt: number) {
     const g = this.g;
     this.t += dt;
-    this.presence += ((this.tending && this.cur.on ? 1 : 0) - this.presence) * Math.min(1, dt * 3);
     if (Math.random() < dt * 0.7) {
       const x = Math.random() * W, y = lerp(g.waterTop + 10, H - 10, Math.random());
       if (!this.onPad(x, y)) this.rings.push({ x, y, age: 0, life: 3 + Math.random() * 2, size: lerp(14, 60, g.depth(y)) });
@@ -316,27 +311,6 @@ export class Life {
       ctx.beginPath();
       ctx.ellipse(p.x, p.y, 4, p.landed ? 1.6 : 2.6, Math.sin(p.ph * 2) * 0.8, 0, Math.PI * 2);
       ctx.fill();
-    }
-
-    // Blooms glow as the cursor nears them: the painted ones, and the ones planted.
-    const c = this.cur;
-    if (this.presence > 0.02) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const glow = (x: number, y: number, w: number, flower: number) => {
-        // A soft, wide swell that rises smoothly as the cursor nears, so nothing flares.
-        const near = Math.exp(-((x - c.x) ** 2 + (y - c.y) ** 2) / (170 * 170)) * this.presence;
-        if (near < 0.03) return;
-        const R = Math.max(22, w * 0.9) * (1 + 0.35 * near), col = lighten(s.flower[flower], 0.2), gr = ctx.createRadialGradient(x, y, 0, x, y, R);
-        gr.addColorStop(0, css(col, 0.22 * near));
-        gr.addColorStop(0.5, css(col, 0.08 * near));
-        gr.addColorStop(1, css(col, 0));
-        ctx.fillStyle = gr;
-        ctx.fillRect(x - R, y - R, R * 2, R * 2);
-      };
-      for (const f of this.flowers) glow(f.x, f.y - f.h * 0.3, f.w, f.flower);
-      for (const p of this.planted) glow(p.x, p.y - p.w * 0.25, p.w * 1.2, p.flower);
-      ctx.restore();
     }
 
     if (this.fly) {
