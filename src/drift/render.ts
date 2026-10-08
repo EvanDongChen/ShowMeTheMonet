@@ -9,16 +9,24 @@
 // on the water plane in perspective (./water.ts).
 import { css, darken, mix } from '../core/color';
 import { dab, ramp } from '../core/dab';
-import { lerp } from '../core/math';
+import { clamp, lerp } from '../core/math';
 import { cardId } from '../paint/cards';
 import type { Garden } from '../world/garden';
 import { Boat, EYE } from './camera';
 import { River, type Placed } from './river';
-import { PaintedWater, paintSky, weavePattern } from './water';
+import { PaintedWater, paintSky, weavePattern, type Sky } from './water';
 
 const NEAR = 0.55, FAR = 120;
-/** Depth slabs, far to near: the veil is laid down each time drawing crosses one. */
-const SLABS = [95, 68, 48, 34, 24, 16, 10, 5];
+/**
+ * Depth slabs, far to near: the veil is laid down each time drawing crosses one. They are fine
+ * enough that a card slipping from one slab to the next changes by a few percent, which can't be
+ * seen, rather than jumping between a handful of fog levels.
+ */
+const SLABS: number[] = (() => {
+  const out: number[] = [];
+  for (let z = 112; z > 4.5; z -= Math.max(1.5, z * 0.04)) out.push(z);
+  return out;
+})();
 
 export interface View {
   w: number; h: number; f: number;
@@ -28,7 +36,13 @@ export interface View {
   sin: number; cos: number;
 }
 
-interface Shown { p: Placed; zr: number; sx: number; sy: number; sw: number; sh: number; img: HTMLCanvasElement | null; }
+/**
+ * `zr` is depth along the view axis, which places the card on screen. `d` is its distance from the
+ * boat, which doesn't change when the view turns, so it orders and fogs the cards: steering never
+ * reshuffles the walls or flickers their haze. `fade` eases a card in as it finishes painting and
+ * out at the nearest and farthest limits, so nothing pops.
+ */
+interface Shown { p: Placed; zr: number; d: number; sx: number; sy: number; sw: number; sh: number; img: HTMLCanvasElement | null; fade: number; }
 
 export type ImageOf = (id: string) => HTMLCanvasElement | null;
 
@@ -38,7 +52,11 @@ export class DriftRenderer {
   private shown: Shown[] = [];
   /** Distance over which the air veils the garden: shorter in mist. */
   private haze: number;
-  private sky: HTMLCanvasElement;
+  private sky: Sky;
+  /** The sky is painted here, then set behind everything at the end so the fog never washes it out. */
+  private skyBuf = document.createElement('canvas');
+  /** When each card's painting was first seen finished, for easing it in. */
+  private born = new Map<string, number>();
   private water: PaintedWater | null = null;
   private weave: CanvasPattern | null = null;
 
@@ -69,20 +87,42 @@ export class DriftRenderer {
     return Math.exp(-z / this.haze);
   }
 
-  draw(ctx: CanvasRenderingContext2D, boat: Boat, t: number, w: number, h: number, overlay?: (v: View) => void) {
+  draw(ctx: CanvasRenderingContext2D, boat: Boat, t: number, w: number, h: number, overlay?: (v: View) => void, behind?: (c: CanvasRenderingContext2D, v: View) => void) {
     const v = this.view(boat, w, h), s = this.g.series, yaw = boat.viewYaw;
-    this.collect(v);
+    this.collect(v, t);
     this.water ??= new PaintedWater(this.g, ctx);
     this.weave ??= weavePattern(ctx);
 
-    // The sky glimpsed over the trees, swinging a little as we turn.
-    ctx.drawImage(this.sky, -w * 0.3 - Math.max(-1, Math.min(1, yaw)) * w * 0.15, 0, w * 1.6, v.hy + 2);
+    ctx.clearRect(0, 0, w, h);
+
+    // The sky glimpsed over the trees: painted clouds drifting slowly, panning as we turn, with
+    // the sun's bloom and birds. The tile keeps its own proportions (4:1), so clouds are never squashed.
+    const tw = (v.hy + 2) * 4, off = (((yaw * w * 0.6 + t * 2.5) % tw) + tw) % tw, sh = Math.ceil(v.hy) + 2;
+    if (this.skyBuf.width !== w || this.skyBuf.height !== sh) {
+      this.skyBuf.width = w;
+      this.skyBuf.height = sh;
+    }
+    const sb = this.skyBuf.getContext('2d')!;
+    sb.clearRect(0, 0, w, sh);
+    this.skyPlate(sb, v, off, tw);
+    this.sunGlow(sb, v, off, tw, 0.34);
+    behind?.(sb, v);
     const water = ctx.createLinearGradient(0, v.hy, 0, h);
     water.addColorStop(0, css(mix(s.air, ramp(s.water, 0.6), 0.5)));
     water.addColorStop(0.25, css(ramp(s.water, 0.45)));
     water.addColorStop(1, css(ramp(s.water, 0.18)));
     ctx.fillStyle = water;
     ctx.fillRect(0, v.hy, w, h);
+    // The sky lying in the water, under the reflected garden.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, v.hy, w, h - v.hy);
+    ctx.clip();
+    ctx.globalAlpha = 0.5;
+    ctx.translate(0, v.hy * 2);
+    ctx.scale(1, -1);
+    ctx.drawImage(this.skyBuf, 0, 0);
+    ctx.restore();
 
     this.reflect(ctx, v, t);
     this.water.follow(boat.x, boat.z, v.sin, v.cos);
@@ -92,15 +132,21 @@ export class DriftRenderer {
     // The cards, far to near, with a veil of air laid down at each slab boundary.
     let slab = 0;
     for (const it of this.shown) {
-      while (slab < SLABS.length && it.zr < SLABS[slab]) this.veil(ctx, v, slab++);
+      while (slab < SLABS.length && it.d < SLABS[slab]) this.veil(ctx, v, slab++);
       this.card(ctx, it);
     }
     while (slab < SLABS.length) this.veil(ctx, v, slab++);
+
+    // The sky goes behind all of it: fog only tints the cards and water, so the clouds keep their colour.
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.drawImage(this.skyBuf, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
 
     overlay?.(v);
 
     // Light falling through the garden onto the water ahead, and the edge of our vision.
     ctx.globalCompositeOperation = 'screen';
+    this.sunGlow(ctx, v, off, tw, 0.14);
     const glow = ctx.createRadialGradient(w / 2, v.hy, 0, w / 2, v.hy, Math.max(w, h) * 0.7);
     glow.addColorStop(0, css(s.air, 0.22));
     glow.addColorStop(1, css(s.air, 0));
@@ -123,39 +169,63 @@ export class DriftRenderer {
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  /** One copy of the sky, tiled across the view. */
+  private skyPlate(ctx: CanvasRenderingContext2D, v: View, off: number, tw: number) {
+    for (const x of [-off, tw - off, 2 * tw - off]) if (x < v.w && x + tw > 0) ctx.drawImage(this.sky.canvas, x, 0, tw, v.hy + 2);
+  }
+
+  /** The sun, a soft bloom in the sky's own coordinates, so it swings past as the view turns. */
+  private sunGlow(ctx: CanvasRenderingContext2D, v: View, off: number, tw: number, strength: number) {
+    const s = this.g.series, prev = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'screen';
+    for (const k of [-1, 0, 1]) {
+      const sx = this.sky.sunU * tw - off + k * tw, sy = v.hy * this.sky.sunV, r = v.w * 0.34;
+      if (sx < -r || sx > v.w + r) continue;
+      const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
+      glow.addColorStop(0, css(mix(s.glint[2], [255, 244, 214], 0.5), strength * 1.4));
+      glow.addColorStop(0.25, css(s.glint[1], strength * 0.6));
+      glow.addColorStop(1, css(s.glint[1], 0));
+      ctx.fillStyle = glow;
+      ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+    }
+    ctx.globalCompositeOperation = prev;
+  }
+
   /** Project everything in range and sort it far to near. */
-  private collect(v: View) {
+  private collect(v: View, t: number) {
     this.shown.length = 0;
     const k0 = River.reachOf(v.z - 4) - 1, k1 = River.reachOf(v.z + FAR) + 1;
     for (let k = k0; k <= k1; k++) {
       for (const p of this.river.reach(k).cards) {
         const dx = p.x - v.x, dz = p.z - v.z;
         const zr = dx * v.sin + dz * v.cos;
-        if (zr < (p.flat ? 1.1 : NEAR) || zr > FAR) continue;
+        const d = Math.hypot(dx, dz);
+        if (zr < (p.flat ? 1.1 : NEAR) || d > FAR) continue;
         const xr = dx * v.cos - dz * v.sin, sc = v.f / zr, sw = p.w * sc, sx = v.w / 2 + xr * sc;
         if (sx + sw / 2 < -v.w * 0.1 || sx - sw / 2 > v.w * 1.1) continue;
         // A pad lies on the water, so it is foreshortened by how steeply we look down at it.
         const sh = p.flat ? sw * (v.eye / zr) * 1.15 : p.h * sc;
-        this.shown.push({ p, zr, sx, sy: v.hy + v.eye * sc, sw, sh, img: this.image(cardId(p.kind, p.variant)) });
+        const id = cardId(p.kind, p.variant), img = this.image(id);
+        let appear = 0;
+        if (img) {
+          if (!this.born.has(id)) this.born.set(id, t);
+          appear = clamp((t - this.born.get(id)!) / 0.9, 0, 1);
+          appear = appear * appear * (3 - 2 * appear);
+        }
+        const fade = appear * clamp((FAR - d) / (FAR * 0.2), 0, 1) * (p.flat ? 1 : clamp((zr - NEAR) / 0.9, 0, 1));
+        if (fade <= 0.004) continue;
+        this.shown.push({ p, zr, d, sx, sy: v.hy + v.eye * sc, sw, sh, img, fade });
       }
     }
-    this.shown.sort((a, b) => b.zr - a.zr);
+    this.shown.sort((a, b) => b.d - a.d);
   }
 
   private card(ctx: CanvasRenderingContext2D, it: Shown) {
     const { p, sx, sy, sw, sh, img } = it;
-    if (!img) {
-      // Until the card is painted, a soft blot of its colour holds its place.
-      if (p.flat || p.kind === 'bridge') return;
-      ctx.fillStyle = css(ramp(this.g.series.foliage, 0.45), 0.5);
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - sh * 0.5, sw * 0.4, sh * 0.45, 0, 0, Math.PI * 2);
-      ctx.fill();
-      return;
-    }
+    if (!img) return;
     const y = p.flat ? sy - sh / 2 : sy - sh;
     // Pads right under the bow fade away rather than looming up as giant blurs.
-    if (p.flat && it.zr < 2.2) ctx.globalAlpha = (it.zr - 1.1) / 1.1;
+    ctx.globalAlpha = it.fade * (p.flat && it.zr < 2.2 ? (it.zr - 1.1) / 1.1 : 1);
     if (p.flip) {
       ctx.save();
       ctx.translate(sx, 0);
@@ -173,8 +243,11 @@ export class DriftRenderer {
     const far = SLABS[i], near = SLABS[i + 1] ?? 0;
     const a = 1 - this.clear(far - near);
     const bottom = v.hy + (v.eye * v.f) / far;
+    // Only over what's already painted (cards, water), never over the empty sky behind.
+    ctx.globalCompositeOperation = 'source-atop';
     ctx.fillStyle = css(this.g.series.air, a);
     ctx.fillRect(0, 0, v.w, bottom);
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   /** The mirror: standing cards upside down, broken into ripples below the horizon. */
@@ -190,7 +263,7 @@ export class DriftRenderer {
     r.setTransform(0.5, 0, 0, 0.5, 0, 0);
     for (const it of this.shown) {
       if (it.p.flat || !it.img) continue;
-      r.globalAlpha = 0.25 + 0.6 * this.clear(it.zr);
+      r.globalAlpha = (0.25 + 0.6 * this.clear(it.d)) * it.fade;
       r.save();
       r.translate(it.sx, it.sy);
       r.scale(it.p.flip ? -1 : 1, -1);

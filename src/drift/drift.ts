@@ -62,7 +62,7 @@ export class Drift {
   }
 
   draw(ctx: CanvasRenderingContext2D, t: number, w: number, h: number) {
-    this.renderer.draw(ctx, this.boat, t, w, h, (v) => this.life.draw(ctx, v, t));
+    this.renderer.draw(ctx, this.boat, t, w, h, (v) => this.life.draw(ctx, v, t), (c, v) => this.life.drawSky(c, v, t));
   }
 
   key(code: string, down: boolean) {

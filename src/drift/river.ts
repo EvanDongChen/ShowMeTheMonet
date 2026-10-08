@@ -107,7 +107,7 @@ export class River {
       { step: 2.4, off: [-1.9, -0.6], pick: (r) => (r < 0.3 ? 'reeds' : r < 0.45 ? 'iris' : null), scale: [0.6, 1] },
       { step: 1.1, off: [-0.3, 0.6], pick: (r) => (r < 0.3 ? 'reeds' : r < 0.5 ? 'iris' : r < 0.75 ? 'grass' : r < 0.9 ? 'flowers' : null), scale: [0.75, 1.25] },
       { step: 2.2, off: [0.8, 3], pick: (r) => (r < 0.6 ? 'shrub' : r < 0.9 ? 'flowers' : 'grass'), scale: [0.8, 1.35] },
-      { step: 4.6, off: [1.5, 6], pick: (r) => (r < 0.5 ? 'willow' : r < 0.72 ? 'poplar' : r < 0.9 ? 'shrub' : null), scale: [0.85, 1.25] },
+      { step: 4.6, off: [1.5, 6], pick: (r) => (r < 0.55 ? 'willow' : r < 0.67 ? 'poplar' : r < 0.9 ? 'shrub' : null), scale: [0.7, 1.1] },
       { step: 11, off: [10, 17], pick: () => 'backdrop', scale: [1, 1.4] },
     ];
     for (const side of [-1, 1]) {
@@ -133,7 +133,7 @@ export class River {
 
     // Rafts of lilies drifting all over the pond, thickest near the banks, with open water between.
     const r = g.rng(0x7e4c, k, 0x1a9);
-    for (let c = r.int(15, 23); c > 0; c--) {
+    for (let c = r.int(12, 19); c > 0; c--) {
       const cz = z0 + r.random() * REACH, u = (r.chance(0.55) ? r.range(0.4, 0.95) : r.range(-0.8, 0.8)) * (r.chance(0.5) ? 1 : -1);
       const half = this.half(cz), cx = this.center(cz) + u * half, rad = r.range(1.5, 5);
       for (let n = r.int(18, 46); n > 0; n--) {
@@ -147,7 +147,7 @@ export class River {
     }
 
     // Single pads strewn over the open water, so the near stretch is never bare.
-    for (let n = 50; n > 0; n--) {
+    for (let n = 36; n > 0; n--) {
       const z = z0 + r.random() * REACH, x = this.center(z) + r.range(-0.9, 0.9) * this.half(z);
       const size = r.range(0.4, 1), variant = r.int(0, CARDS.pad.variants - 1), bloom = r.chance(0.2), bv = r.int(0, 99), flip = r.chance(0.5);
       if (Math.abs(z - bz) < 1) continue;

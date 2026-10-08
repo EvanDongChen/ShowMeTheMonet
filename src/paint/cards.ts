@@ -219,7 +219,7 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
     // little more for depth. Drawn in easel units (a hundred to the metre) so the strokes match.
     const { ctx, rng, s, v } = c;
     ctx.scale(0.01, 0.01);
-    drawPad(ctx, rng, { x: 50, y: 20, w: 90, h: 32, rot: 0, tone: (v + 0.5) / CARDS.pad.variants, notch: rng.range(-2.6, -0.5), flower: -1, key: 0 }, s);
+    drawPad(ctx, rng, { x: 50, y: 20, w: 90, h: 32, rot: 0, tone: (v + 0.5) / CARDS.pad.variants, notch: rng.range(-2.6, -0.5), flower: -1, key: 0 }, s, true);
   },
 
   bloom(c) {

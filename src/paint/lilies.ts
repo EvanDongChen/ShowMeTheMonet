@@ -1,7 +1,7 @@
 // Water lilies, painted as Monet paints them: not drawn leaves but a few flat, horizontal strokes
 // of broken green laid side by side, a cool shadow on the water beneath, a pale stroke where the
 // sky catches the leaf, and here and there a flower in thick white, pink or red.
-import { darken, lighten, mix, type RGB } from '../core/color';
+import { css, darken, lighten, mix, type RGB } from '../core/color';
 import { dab, flat, ramp, type Ctx } from '../core/dab';
 import type { Rng } from '../core/rng';
 import type { Pad } from '../world/garden';
@@ -19,8 +19,36 @@ export function planLilies(p: TilePlan) {
   });
 }
 
-export function drawPad(ctx: Ctx, rng: Rng, pad: Pad, s: Series) {
+/**
+ * One lily pad as a few horizontal strokes. `round` (for the drift's big cards) lays a rounded body
+ * first and keeps the strokes inside its outline, so a pad seen large is a pad and not stacked bricks.
+ */
+export function drawPad(ctx: Ctx, rng: Rng, pad: Pad, s: Series, round = false) {
   const { x, y, w, h, rot } = pad, tone = 0.2 + pad.tone * 0.55;
+  if (round) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(x, y, w * 0.5, h * 0.5, rot, 0, Math.PI * 2);
+    ctx.fillStyle = css(ramp(s.pad, tone - 0.05), 0.96);
+    ctx.fill();
+    ctx.clip();
+    drawPadStrokes(ctx, rng, pad, s, tone);
+    ctx.restore();
+    ctx.beginPath();
+    ctx.ellipse(x, y, w * 0.5, h * 0.5, rot, 0, Math.PI * 2);
+    ctx.strokeStyle = css(darken(ramp(s.pad, tone - 0.1), 0.18), 0.55);
+    ctx.lineWidth = Math.max(1, h * 0.05);
+    ctx.stroke();
+    // The cleft, a sliver of water showing through, cut over the clipped body.
+    const nx = Math.cos(pad.notch), ny = Math.sin(pad.notch);
+    dab(ctx, x + nx * w * 0.3, y + ny * h * 0.3, w * 0.3, Math.max(1, h * 0.1), Math.atan2(ny * h, nx * w), mix(s.water[1], s.accent[0], 0.25), 0.8);
+    return;
+  }
+  drawPadStrokes(ctx, rng, pad, s, tone);
+}
+
+function drawPadStrokes(ctx: Ctx, rng: Rng, pad: Pad, s: Series, tone: number) {
+  const { x, y, w, h, rot } = pad;
   flat(ctx, rng, x + w * 0.05, y + h * 0.36, w * 1.05, Math.max(1.5, h * 0.55), rot, darken(mix(s.water[0], s.accent[0], 0.3), 0.1), 0.4);
   // The leaf, built up in horizontal strokes that narrow toward its near and far edges.
   const rows = h > 14 ? 4 : h > 7 ? 3 : 2;
