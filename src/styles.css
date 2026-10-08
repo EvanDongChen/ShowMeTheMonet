@@ -507,6 +507,8 @@ button { font: inherit; color: inherit; }
 .dab-drift { --size: 64px; --paint: var(--rose); }
 .dab-drift svg path { fill: rgba(30, 36, 32, 0.12); }
 .dab-drift .dab-label, .dab-back .dab-label { opacity: 1; bottom: auto; top: calc(100% + 8px); }
+/* "Step inside" is wider than the paint it names; slide it right, clear of the paint beside it. */
+.dab-drift .dab-label { left: calc(50% + 15px); }
 .dab-new { --paint: var(--sage); }
 .dab-animate { --paint: var(--water); }
 .dab-animate[aria-pressed='false'] { filter: saturate(0.25) brightness(1.08); }
