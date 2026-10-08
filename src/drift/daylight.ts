@@ -23,6 +23,24 @@ const bump = (p: number, centre: number, width: number) => {
   return smoothstep(width, 0, d);
 };
 
+/** What to call the hour, for the note pinned in the corner and the postcard's caption. */
+export function hourName(d: Daylight): string {
+  if (d.dusk > 0.5) return 'dusk, the fireflies out';
+  if (d.dusk > 0.2) return 'the light going violet';
+  if (d.warm > 0.55) return 'a golden afternoon';
+  if (d.dawn > 0.4) return 'first light, in a pink mist';
+  if (d.warm > 0.2) return 'the afternoon warming';
+  return 'a bright morning';
+}
+
+/** A colour for the hour's little lamp. */
+export function hourColor(d: Daylight): string {
+  if (d.dusk > 0.2) return '#a79be0';
+  if (d.warm > 0.3) return '#f0a24a';
+  if (d.dawn > 0.3) return '#f2b4c8';
+  return '#f4d97a';
+}
+
 export function daylight(z: number): Daylight {
   // The first stretch, where every drift begins, is a bright morning.
   const p = (((0.2 + z / DAY) % 1) + 1) % 1;

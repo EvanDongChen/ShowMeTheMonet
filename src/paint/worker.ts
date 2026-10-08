@@ -1,12 +1,13 @@
 // A painting worker: paints easel tiles and drift cards off the main thread and sends them back as
 // bitmaps.
 import { Garden } from '../world/garden';
+import type { SeriesName } from '../world/series';
 import { paintCard, type CardKind } from './cards';
 import { paintTile } from './tiles';
 
 export type Job = { type: 'tile'; t: number; scale: number } | { type: 'card'; kind: CardKind; variant: number; ppm: number };
 
-export type ToWorker = { type: 'init'; seed: string } | { type: 'job'; id: string; job: Job };
+export type ToWorker = { type: 'init'; seed: string; light: SeriesName | null } | { type: 'job'; id: string; job: Job };
 export type FromWorker =
   | { type: 'frame'; id: string; bitmap: ImageBitmap; progress: number; done: boolean }
   | { type: 'error'; id: string; message: string };
@@ -18,7 +19,7 @@ const post = (msg: FromWorker, transfer: Transferable[] = []) => (self as unknow
 self.onmessage = async (e: MessageEvent<ToWorker>) => {
   const m = e.data;
   if (m.type === 'init') {
-    garden = new Garden(m.seed);
+    garden = new Garden(m.seed, m.light);
     return;
   }
   if (!garden) return;

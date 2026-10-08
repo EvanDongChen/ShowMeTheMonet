@@ -6,6 +6,12 @@
     <title>Show Me the Monet</title>
     <meta name="description" content="An endlessly varied, procedurally painted Bridge over a Pond of Water Lilies, after Claude Monet, that you can row into." />
     <meta name="theme-color" content="#f2ece0" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Show Me the Monet" />
+    <meta property="og:description" content="A painting that paints itself, in five lights, and that you can row into." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Show Me the Monet" />
+    <meta name="twitter:description" content="A painting that paints itself, in five lights, and that you can row into." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -24,7 +30,10 @@
           <ellipse class="pad" cx="28" cy="34" rx="5" ry="2" />
           <circle class="bloom" cx="13" cy="30.5" r="1.8" />
         </svg>
-        <span class="brand-name">Show Me <em>the</em> Monet</span>
+        <span class="brand-text">
+          <span class="brand-name">Show Me <em>the</em> Monet</span>
+          <span class="brand-tag">a painting you can row into</span>
+        </span>
       </header>
 
       <main id="easel-view" aria-label="The easel">
@@ -42,6 +51,10 @@
               <span class="sig-name">Claude Monet</span>
               <input id="seed" class="sig-seed" type="text" spellcheck="false" autocomplete="off" aria-label="Seed" />
             </label>
+            <div class="enter-cue" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 15 Q12 20 21 15 L18 18 Q12 21 6 18Z" /><path d="M12 15 V5 L17 12 Z" /></svg>
+              <span>step inside</span>
+            </div>
           </figure>
           <div class="ledge" aria-hidden="true"></div>
           <div class="tag" id="tag">
@@ -57,14 +70,31 @@
           <span class="pin" aria-hidden="true"></span>
           <span class="note-title" id="note-title">Harmony in Green</span>
           <span class="note-line" id="note-line">Reach 1 · 0 m rowed</span>
+          <span class="note-hour"><i class="hour-dot" id="hour-dot"></i><span id="hour-name">a bright morning</span></span>
         </aside>
+        <div class="title-card" id="title-card" aria-hidden="true">
+          <span class="tc-kicker">after Claude Monet</span>
+          <span class="tc-title" id="tc-title">Harmony in Green</span>
+          <span class="tc-line" id="tc-line"></span>
+        </div>
         <div class="hint" id="hint" aria-hidden="true">
           <span class="hint-mouse"><b>W</b> / <b>↑</b> row &nbsp;·&nbsp; <b>A</b> <b>D</b> steer &nbsp;·&nbsp; move to look around &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>Esc</b> step out</span>
           <span class="hint-touch">hold to row &nbsp;·&nbsp; drag to steer</span>
         </div>
       </section>
 
+      <div class="invite" id="invite" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M3 15 Q12 20 21 15 L18 18 Q12 21 6 18Z" /><path d="M12 15 V5 L17 12 Z" /></svg>
+        <span class="invite-mouse">click the painting to step inside</span>
+        <span class="invite-touch">tap the painting to step inside</span>
+      </div>
+
       <nav class="palette" id="palette" aria-label="Painter's palette">
+        <div class="lights" id="lights" role="group" aria-label="Choose the light">
+          <span class="lights-title" id="lights-title">Harmony in Green</span>
+          <div class="lights-row" id="lights-row"></div>
+          <span class="lights-note">Monet painted the bridge again and again, in every light.</span>
+        </div>
         <svg class="palette-board" viewBox="0 0 320 220" aria-hidden="true">
           <defs>
             <radialGradient id="wood" cx="35%" cy="30%" r="80%">
@@ -91,13 +121,17 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 L15 9 M14 6 l4 4 M17 3 l4 4 -3 3 -4 -4z" /></svg>
             <span class="dab-label">new canvas</span>
           </button>
+          <button class="dab dab-light" id="btn-light" style="--x: 150px; --y: 100px" aria-label="Choose the light (L)" aria-haspopup="true" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" /></svg>
+            <span class="dab-label">choose the light</span>
+          </button>
           <button class="dab dab-animate" id="btn-animate" style="--x: 230px; --y: 54px" aria-label="Animate (A)" aria-pressed="true">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 Q7 7 11 10 T19 10 M5 15 Q9 12 13 15 T21 15" /></svg>
             <span class="dab-label">ripple</span>
           </button>
-          <button class="dab dab-save" id="btn-save" style="--x: 182px; --y: 176px" aria-label="Save image (S)">
+          <button class="dab dab-save" id="btn-save" style="--x: 182px; --y: 176px" aria-label="Make a postcard (S)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 V15 M7 10 l5 5 5 -5 M5 20 H19" /></svg>
-            <span class="dab-label">keep it</span>
+            <span class="dab-label">make a postcard</span>
           </button>
           <button class="dab dab-share" id="btn-share" style="--x: 130px; --y: 160px" aria-label="Copy share link (C)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14 a4 4 0 0 0 5.6 0 l3-3 a4 4 0 0 0 -5.6 -5.6 l-1 1 M14 10 a4 4 0 0 0 -5.6 0 l-3 3 a4 4 0 0 0 5.6 5.6 l1-1" /></svg>
@@ -117,9 +151,9 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6 V18 M15 6 V18" /></svg>
             <span class="dab-label">rest the oars</span>
           </button>
-          <button class="dab dab-save" id="btn-snap" style="--x: 150px; --y: 168px" aria-label="Save this view (P)">
+          <button class="dab dab-save" id="btn-snap" style="--x: 150px; --y: 168px" aria-label="Make a postcard of this view (P)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8 h3 l2-3 h6 l2 3 h3 v11 H4z" /><circle cx="12" cy="13" r="3.4" /></svg>
-            <span class="dab-label">sketch this</span>
+            <span class="dab-label">postcard</span>
           </button>
         </div>
       </nav>
@@ -130,30 +164,36 @@
           <h2 id="about-title">Show Me <em>the</em> Monet</h2>
           <p>
             Every canvas here is a new <em>Bridge over a Pond of Water Lilies</em>, painted touch by touch from a seed: the
-            arch of the footbridge, the willows, the rafts of lilies and the light they're seen in. Seed
-            <button type="button" class="link" id="about-classic">1899</button> paints Monet's own composition.
+            arch of the footbridge, the willows, the rafts of lilies and the light they're seen in. Monet painted the
+            bridge again and again, in every light; <strong>choose the light</strong> and the canvas is painted over in
+            another of his series. Seed <button type="button" class="link" id="about-classic">1899</button> paints his
+            own composition.
           </p>
           <p>
             <strong>Drift in</strong> to step through the canvas into a rowboat and row on through an endless water garden
-            built of painted cutouts, like a diorama lit from within.
+            built of painted cutouts, like a diorama lit from within. Branches arch overhead, the hour turns as you row,
+            and now and then there is a boat tied up at a bank, a stone lantern, a footbridge or a sunlit clearing.
+            <strong>Make a postcard</strong> to frame the canvas, or wherever you have rowed to, with a handwritten caption.
           </p>
           <dl class="keys">
             <dt>N</dt><dd>new canvas</dd>
             <dt>D</dt><dd>drift in / step out</dd>
             <dt>A</dt><dd>ripple (animate)</dd>
-            <dt>S</dt><dd>keep the picture</dd>
+            <dt>L</dt><dd>change the light</dd>
+            <dt>S</dt><dd>make a postcard</dd>
             <dt>C</dt><dd>copy a link</dd>
             <dt>W A S D</dt><dd>row and steer, in the boat</dd>
             <dt>Space</dt><dd>rest the oars</dd>
             <dt>M</dt><dd>sound on / off, in the boat</dd>
           </dl>
-          <p class="card-fine">Nothing is traced or scanned: every dab is placed by code. No images, no libraries.</p>
+          <p class="card-fine">Nothing is traced or scanned: every dab is placed by code, and the sound is synthesised. No images, no libraries. Made by Evan Chen.</p>
           <button class="card-close" value="close" aria-label="Close">×</button>
         </form>
       </dialog>
 
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </div>
+    <noscript><p style="font-family: Georgia, serif; text-align: center; margin-top: 30vh">Show Me the Monet paints itself in your browser, so it needs JavaScript.</p></noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

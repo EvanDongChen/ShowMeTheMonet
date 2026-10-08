@@ -17,6 +17,11 @@ export class Drift {
   private keys = new Set<string>();
   private pointer = { look: 0, steer: 0, row: 0, pitch: 0 };
   paused = false;
+  /** Landmarks already pointed out, and what is waiting to be said. */
+  private seen = new Set<string>();
+  private events: string[] = [];
+  private lastSaid = -99;
+  private wasOpen = false;
 
   constructor(readonly g: Garden, private pool: PaintPool) {
     this.river = new River(g);
@@ -59,6 +64,38 @@ export class Drift {
     this.boat.update(dt, this.controls());
     this.life.update(dt, this.boat);
     this.river.prune(this.reach);
+    this.notice();
+  }
+
+  /** Messages for the page to whisper, e.g. when a lantern comes into view. */
+  takeEvents() {
+    return this.events.splice(0);
+  }
+
+  /** Point out a landmark the first time it is a little way ahead, and a clearing as the trees open. */
+  private notice() {
+    const b = this.boat, said = b.t - this.lastSaid < 8;
+    const open = this.river.openness(b.z + 8) > 0.6;
+    if (open && !this.wasOpen && !said) this.say('the trees open to the sky', b.t);
+    this.wasOpen = open;
+    if (said) return;
+    const names: Partial<Record<CardKind, string>> = { boat: 'a rowboat tied up at the bank', lantern: "a stone lantern at the water's edge", bridge: 'a footbridge ahead' };
+    for (let k = this.reach; k <= this.reach + 1; k++) {
+      for (const c of this.river.reach(k).cards) {
+        const msg = names[c.kind], ahead = c.z - b.z;
+        if (!msg || ahead < 3 || ahead > 16) continue;
+        const key = `${c.kind}:${Math.round(c.x)}:${Math.round(c.z)}`;
+        if (this.seen.has(key)) continue;
+        this.seen.add(key);
+        this.say(msg, b.t);
+        return;
+      }
+    }
+  }
+
+  private say(msg: string, t: number) {
+    this.events.push(msg);
+    this.lastSaid = t;
   }
 
   draw(ctx: CanvasRenderingContext2D, t: number, w: number, h: number) {
