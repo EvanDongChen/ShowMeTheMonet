@@ -25,6 +25,7 @@ There is no test suite. Run `npm run typecheck` before committing. Files named `
 - Match the surrounding code's style, naming and comment density.
 - Generation is deterministic: the same seed must always paint the same easel picture and the same river. Derive randomness from `hash(seed, ...)` (see `src/core/`), never from `Math.random()` in painting, card or world code.
 - The easel is painted in tiles. Tiles join seamlessly because every dab is seeded from its global grid cell and sorted by a global key (`src/paint/plan.ts`). Keep that invariant when adding dabs.
+- Anything a worker needs to build the same world must be passed to it explicitly. The chosen light (`Garden(seed, light)`) goes through `PaintPool` and the worker's `init` message; add a new input the same way, or the page and the workers will paint different worlds.
 - Seed `1899`'s easel must stay Monet's composition (`src/world/giverny.ts`); every other seed is a variation from `src/world/garden.ts`. Never ship traced or scanned image data.
 - The drift river is split into reaches (`src/drift/river.ts`). Seed a reach's contents by `hash(seed, reach, slot)`, and keep any feature's reach within two reaches (`REACH`). Cutout cards are painted from `hash(seed, kind, variant)` and drawn as billboards sorted far to near.
 - Painting (easel tiles and drift cards) runs in workers (`src/paint/worker.ts`). Keep worker canvases CPU-backed. Anything needing web fonts (the signature) is drawn on the page.

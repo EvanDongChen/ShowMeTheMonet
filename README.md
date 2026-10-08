@@ -2,7 +2,7 @@
 
 An endlessly varied, procedurally painted *Bridge over a Pond of Water Lilies* (after Claude Monet, 1899), with a rowboat you can take into the painting.
 
-- **Easel**: every seed paints its own variation of the Japanese footbridge over the lily pond, in one of Monet's series of light: Harmony in Green, Harmony in Rose, Morning Mist, Evening Light or Autumn Pond. Seed `1899` paints Monet's own composition.
+- **Easel**: click the painting to step into it, or choose the light and every canvas is painted over in another of Monet's series. Every seed paints its own variation of the Japanese footbridge over the lily pond, in one of Monet's series of light: Harmony in Green, Harmony in Rose, Morning Mist, Evening Light or Autumn Pond. Seed `1899` paints Monet's own composition.
 - **Drift**: step through the canvas into a rowboat and row on through an endless water garden built of painted cutouts. Willows, reeds, irises, footbridges and lily pads stand at different depths like the flats of a lit diorama, and slide past one another as you go. Branches arch overhead, the hour turns as you row (a golden afternoon, a violet dusk with fireflies, a pink dawn mist), and there is always something to row toward: a boat tied up at the bank, a stone lantern, a footbridge, a sunlit clearing. Quiet procedural sound comes with it (`M` mutes).
 
 ```sh
@@ -17,11 +17,13 @@ Plain TypeScript, Vite and canvas 2D, with no runtime dependencies. The build is
 
 | | Easel | Drift |
 | --- | --- | --- |
-| Palette | new canvas, **drift in**, ripple, keep it, share, about | to the easel, rest the oars, sketch this |
-| Keys | `N` new · `D` drift in · `A` animate · `S` save · `C` copy link · `I` about | `W`/`↑` row · `S`/`↓` back-paddle · `A` `D` steer · `Space` rest · `M` sound · `P` save view · `Esc` step out |
+| Palette | new canvas, **choose the light**, **drift in**, ripple, make a postcard, share, about | to the easel, rest the oars, postcard |
+| Keys | `N` new · `D` drift in · `A` animate · `L` change the light · `S` postcard · `C` copy link · `I` about | `W`/`↑` row · `S`/`↓` back-paddle · `A` `D` steer · `Space` rest · `M` sound · `P` postcard · `Esc` step out |
 | Pointer | click the signature to type a seed | the eye follows the mouse, left and right and up (into the canopy) and down (at the water); on touch, hold to row and drag to steer |
 
-URL parameters: `?seed=…`, `&mode=drift` to start in the boat, `&animate=0` to keep the easel still.
+URL parameters: `?seed=…`, `&light=green|rose|mist|evening|autumn` to choose the series, `&mode=drift` to start in the boat, `&animate=0` to keep the easel still.
+
+**Choosing the light** repaints the same seed in another series (the composition stays, the palette and air change), and the choice travels in the link. **Postcards** frame the finished canvas, or the view from the boat, in a paper border with a handwritten caption (the series, the reach rowed and the hour) and the signature. In the boat, a title card names the place as you slip in, and landmarks are whispered as they come into view.
 
 ## How it works
 
@@ -34,7 +36,8 @@ src/drift/   river.ts (the channel, cut into reaches; landmarks, clearings) · c
              render.ts (the diorama) · water.ts (the painted water, sky and weave) · daylight.ts (the hour) · drift.ts
 src/anim/    life.ts (easel: trembling light, rings, petals, a dragonfly) · drift-life.ts (rings, pollen and fireflies, petals, insects, birds)
              sound.ts (the drift's ambience, synthesised)
-src/main.ts  the easel, the palette and the loop
+src/main.ts  the easel, the palette (and its choice of light) and the loop
+src/postcard.ts  frames a painted canvas as a postcard
 ```
 
 ### The brush

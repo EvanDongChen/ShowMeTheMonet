@@ -381,6 +381,7 @@ addEventListener('keydown', (e) => {
     case 'KeyD': enterDrift(); break;
     case 'KeyA': setAnimate(!animate); break;
     case 'KeyL': cycleLight(); break;
+    case 'Escape': toggleLights(false); break;
     case 'KeyS': savePicture(); break;
     case 'KeyC': share(); break;
     case 'KeyI': case 'Slash': $<HTMLDialogElement>('about').showModal(); break;
