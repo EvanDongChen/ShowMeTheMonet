@@ -3,7 +3,7 @@
 
 :root {
   --wall: #1c2622;
-  --gilt: #c9a45e;
+  --gilt: #b08259;
   --linen: #f2ece0;
   --linen-deep: #e5dccb;
   --paper: #fbf8f1;
@@ -191,11 +191,13 @@ button { font: inherit; color: inherit; }
   height: 11px;
   transform: translateX(-50%);
   border-radius: 6px;
-  background: linear-gradient(180deg, #f2dc9a, #b48f4a 55%, #7a5a22);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 2px, rgba(0, 0, 0, 0.05) 2px 5px),
+    linear-gradient(180deg, var(--wood-light), var(--wood) 55%, var(--wood-dark));
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
   z-index: 0;
 }
-.picture-light::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 4px; height: 20px; margin-left: -2px; background: linear-gradient(90deg, #7a5a22, #d9bb73, #7a5a22); }
+.picture-light::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 4px; height: 20px; margin-left: -2px; background: linear-gradient(90deg, var(--wood-dark), var(--wood-light), var(--wood-dark)); }
 .picture-light::after {
   content: '';
   position: absolute;
@@ -222,19 +224,22 @@ button { font: inherit; color: inherit; }
 /* The frame: a gilt moulding, built from layered bevels, with a dark liner against the picture. */
 .canvas::before, .canvas::after { content: ''; position: absolute; inset: -30px; z-index: -1; border-radius: 2px; pointer-events: none; }
 .canvas::before {
-  background: #b48f4a;
+  background: #b08259;
   box-shadow:
     0 38px 80px rgba(0, 0, 0, 0.62), 0 12px 26px rgba(0, 0, 0, 0.5),
-    inset 0 0 0 2px #120e09,
-    inset 0 0 0 10px #c9a45e,
-    inset 0 0 0 12px #5e4118,
-    inset 0 0 0 21px #dcbd78,
-    inset 0 0 0 22px #6c4c1d,
-    inset 0 0 0 27px #b48f4a,
-    inset 0 0 0 30px #17110b;
+    inset 0 0 0 2px #2c1b0e,
+    inset 0 0 0 10px #c29468,
+    inset 0 0 0 12px #6f4a2e,
+    inset 0 0 0 21px #d8b48a,
+    inset 0 0 0 22px #7d5333,
+    inset 0 0 0 27px #b08259,
+    inset 0 0 0 30px #20140a;
 }
 .canvas::after {
-  background: linear-gradient(118deg, rgba(255, 244, 205, 0.34), rgba(255, 244, 205, 0) 30%, rgba(0, 0, 0, 0) 62%, rgba(40, 24, 4, 0.38));
+  /* The grain of the wood, and the light from above and the left falling across the moulding. */
+  background:
+    repeating-linear-gradient(97deg, rgba(255, 255, 255, 0.07) 0 2px, rgba(0, 0, 0, 0.06) 2px 5px),
+    linear-gradient(118deg, rgba(255, 238, 205, 0.3), rgba(255, 238, 205, 0) 30%, rgba(0, 0, 0, 0) 62%, rgba(30, 16, 4, 0.4));
 }
 .canvas canvas {
   position: absolute;
@@ -273,7 +278,7 @@ button { font: inherit; color: inherit; }
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
   z-index: 3;
 }
-.tag::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gilt); }
+.tag::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(90deg, var(--wood-light), var(--wood) 60%, var(--wood-dark)); }
 .tag-series { font-family: var(--display); font-style: italic; font-size: 17px; line-height: 1.15; color: var(--ink); }
 .tag-seed { display: flex; align-items: baseline; gap: 7px; margin-top: 5px; padding-top: 6px; border-top: 1px solid var(--ink-faint); font-family: var(--ui); font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-soft); cursor: text; }
 .tag-seed input {
@@ -650,7 +655,7 @@ button { font: inherit; color: inherit; }
 @media (max-width: 720px) {
   .picture-light { display: none; }
   .canvas::before, .canvas::after { inset: -18px; }
-  .canvas::before { box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6), inset 0 0 0 2px #120e09, inset 0 0 0 6px #c9a45e, inset 0 0 0 7px #5e4118, inset 0 0 0 12px #dcbd78, inset 0 0 0 15px #b48f4a, inset 0 0 0 18px #17110b; }
+  .canvas::before { box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6), inset 0 0 0 2px #2c1b0e, inset 0 0 0 6px #c29468, inset 0 0 0 7px #6f4a2e, inset 0 0 0 12px #d8b48a, inset 0 0 0 15px #b08259, inset 0 0 0 18px #20140a; }
   .tag { top: calc(100% + 38px); }
   .brand-name { font-size: 18px; }
   .brand-tag { display: none; }
