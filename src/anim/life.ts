@@ -262,14 +262,14 @@ export class Life {
       const ef = gf === 0 ? 0 : 1 + 2.1 * Math.pow(gf - 1, 3) + 1.1 * Math.pow(gf - 1, 2);
       if (ep > 0.01) {
         ctx.save();
-        ctx.translate(p.x, p.y);
+        ctx.translate(p.x, p.y + (still ? 0 : Math.sin(now * 1.1 + p.seed) * lerp(0.6, 2.2, this.g.depth(p.y))));
         ctx.scale(ep, ep);
         ctx.drawImage(p.pad, -p.bx, -p.by, p.sw, p.sh);
         ctx.restore();
       }
       if (ef > 0.01) {
         ctx.save();
-        ctx.translate(p.x, p.y);
+        ctx.translate(p.x, p.y + (still ? 0 : Math.sin(now * 1.1 + p.seed) * lerp(0.6, 2.2, this.g.depth(p.y))));
         ctx.rotate(still ? 0 : Math.sin(now * 0.9 + p.seed) * 0.03);
         ctx.scale(ef, ef);
         ctx.drawImage(p.bloom, -p.bx, -p.by, p.sw, p.sh);
@@ -283,9 +283,65 @@ export class Life {
     this.drawPlanted(ctx, 0, true);
   }
 
+  /**
+   * The painting itself, made to move. The finished picture is laid over itself again in thin
+   * strips, each nudged by a travelling wave, so the whole of it breathes without a single stroke
+   * being repainted: the willows and leaves sway in a wind that gusts and eases, with the willows
+   * swaying most, the reflections shimmer and the lily pads bob on the water, more the nearer they
+   * are. The bridge is rigid and left as painted. The picture canvas underneath is never touched,
+   * so switching the pond off (or a postcard) gives back the still painting.
+   */
+  private drawLiving(ctx: CanvasRenderingContext2D, picture: HTMLCanvasElement, t: number) {
+    const g = this.g, k = picture.width / W, wt = g.waterTop, cols = 6, cw = W / cols;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // The leaves and willows sway, everywhere but the bridge.
+    ctx.save();
+    const b = g.bridge;
+    ctx.beginPath();
+    ctx.rect(-10, -10, W + 20, wt + 10);
+    const x0 = b.cx - b.span / 2 - 6, x1 = b.cx + b.span / 2 + 6, n = Math.max(2, Math.ceil((x1 - x0) / 40));
+    for (let i = 0; i <= n; i++) {
+      const x = x0 + ((x1 - x0) * i) / n, y = g.deckY(x) - b.railH - 12;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    for (let i = n; i >= 0; i--) {
+      const x = x0 + ((x1 - x0) * i) / n;
+      ctx.lineTo(x, g.deckY(x) + b.thick * 1.6);
+    }
+    ctx.closePath();
+    ctx.clip('evenodd');
+    for (let y = 0; y < wt; y += 10) {
+      const h = Math.min(10, wt - y), env = Math.pow(Math.sin(Math.PI * (y / wt)), 0.8);
+      for (let i = 0; i < cols; i++) {
+        const cx = i * cw, gust = 0.65 + 0.35 * Math.sin(t * 0.35 + cx * 0.004), willow = 1 + 1.3 * g.willow(cx + cw / 2);
+        const dx = env * gust * willow * (2.6 * Math.sin(t * 0.9 + y * 0.012 + cx * 0.006) + 1.1 * Math.sin(t * 1.7 + y * 0.03 + cx * 0.01));
+        ctx.drawImage(picture, cx * k, y * k, (cw + 1) * k, (h + 0.6) * k, cx + dx, y, cw + 1, h + 0.6);
+      }
+    }
+    ctx.restore();
+
+    // The water: reflections shimmer, and the pads and flowers bob.
+    for (let y = wt; y < H; y += 7) {
+      const h = Math.min(7, H - y), d = g.depth(y), amp = lerp(0.6, 3, d), bob = lerp(0.6, 2.8, d);
+      for (let i = 0; i < cols; i++) {
+        const cx = i * cw;
+        const dx = amp * (Math.sin(t * 1.5 + y * 0.09 + cx * 0.01) + 0.6 * Math.sin(t * 2.6 + y * 0.21 + cx * 0.02));
+        const dy = bob * Math.sin(t * 1.1 + y * 0.05 + cx * 0.008);
+        const sy = clamp(y + dy, 0, H - h - 0.6);
+        ctx.drawImage(picture, cx * k, sy * k, (cw + 1) * k, (h + 0.6) * k, cx + dx, y, cw + 1, h + 0.6);
+      }
+    }
+    ctx.restore();
+  }
+
   /** Draw in painting units; the caller has set the transform from painting units to pixels. */
-  draw(ctx: CanvasRenderingContext2D, t: number) {
+  draw(ctx: CanvasRenderingContext2D, t: number, picture?: HTMLCanvasElement) {
     const s = this.g.series;
+    if (picture) this.drawLiving(ctx, picture, t);
     for (const sp of this.sparks) {
       const a = Math.max(0, Math.sin(t * sp.speed + sp.ph)) ** 3;
       if (a < 0.02) continue;

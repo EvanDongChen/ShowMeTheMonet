@@ -370,7 +370,10 @@ function setAnimate(on: boolean) {
   canvasFig.style.touchAction = on ? 'none' : '';
   if (!on) tendOut();
   $('btn-animate').setAttribute('aria-pressed', String(on));
-  if (!on) lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);
+  if (!on) {
+    lifeCtx.setTransform(1, 0, 0, 1, 0, 0);
+    lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);
+  }
 }
 
 // ——— Controls ———
@@ -489,7 +492,7 @@ function frame(now: number) {
       lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);
       if (finished) {
         lifeCtx.setTransform(lifeCanvas.width / W, 0, 0, lifeCanvas.height / H, 0, 0);
-        life.draw(lifeCtx, t);
+        life.draw(lifeCtx, t, picture);
       }
     }
   }
