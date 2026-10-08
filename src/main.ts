@@ -2,7 +2,7 @@
 import './styles.css';
 import { Life } from './anim/life';
 import { Ambience } from './anim/sound';
-import { css, type RGB } from './core/color';
+import { css } from './core/color';
 import { clamp } from './core/math';
 import { daylight, hourColor, hourName } from './drift/daylight';
 import { Drift } from './drift/drift';
@@ -41,13 +41,7 @@ let life: Life;
 let drift: Drift | null = null;
 const sound = new Ambience();
 sound.muted = storage('monet-muted') === '1';
-/** "Stir the painting": while on, the cursor stirs the living paint, and a click splashes it. */
-let stir = false;
-let stirPos: { x: number; y: number; cx: number; cy: number } | null = null;
-let stirPrev: { x: number; y: number } | null = null;
-const stirCursor = $('stir-cursor');
-/** The finished painting, shrunk to a small readable copy, so the living paint can take its colours from it. */
-let paintData: ImageData | null = null;
+const tendCursor = $('tend-cursor');
 let scale = 1;
 let animate = params.get('animate') !== '0' && !reduced;
 let mode: 'easel' | 'drift' = 'easel';
@@ -76,23 +70,6 @@ function onPainted(id: string) {
   progress();
 }
 
-/** A small copy of the finished painting, which the strokes of living paint read their colours from. */
-function readPaint() {
-  const w = 240, h = Math.max(1, Math.round((w * picture.height) / picture.width)), c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  const g = c.getContext('2d', { willReadFrequently: true })!;
-  g.drawImage(picture, 0, 0, w, h);
-  paintData = g.getImageData(0, 0, w, h);
-}
-
-function samplePaint(x: number, y: number): RGB | null {
-  const d = paintData;
-  if (!d) return null;
-  const px = clamp(Math.floor((x / W) * d.width), 0, d.width - 1), py = clamp(Math.floor((y / H) * d.height), 0, d.height - 1), i = (py * d.width + px) * 4;
-  return [d.data[i], d.data[i + 1], d.data[i + 2]];
-}
-
 function progress() {
   let sum = 0;
   for (let t = 0; t < TILES; t++) sum += pool.get(tileId(t))?.progress ?? 0;
@@ -100,8 +77,6 @@ function progress() {
   finished = p >= 0.999;
   canvasFig.classList.toggle('painting', !finished);
   canvasFig.classList.toggle('ready', finished);
-  if (!finished) paintData = null;
-  else if (!paintData) readPaint();
   const invite = finished && !storage('monet-stepped');
   $('invite').classList.toggle('show', invite);
   $('btn-drift').classList.toggle('pulse', invite);
@@ -121,7 +96,6 @@ function layout() {
   // Paint at the size the canvas is shown, in coarse steps so small resizes don't start over.
   const want = clamp(Math.ceil(((pw * dpr) / W) * 4) / 4, 0.5, 2);
   if (want !== scale || picture.width === 0 || !pool) {
-    setStir(false, true);
     scale = want;
     const px = picturePixels(scale);
     picture.width = px.w;
@@ -140,14 +114,12 @@ function layout() {
 
 function setSeed(next: string, push = true, keepLight = false) {
   next = next.trim().slice(0, 24) || randomSeed();
-  setStir(false, true);
   if (!keepLight) light = null;
   pool?.dispose();
   seed = next;
   garden = new Garden(seed, light);
   pool = new PaintPool(seed, onPainted, light);
   life = new Life(garden);
-  life.sample = samplePaint;
   drift = null;
   seedInput.value = seed;
   seedInput.style.setProperty('--len', String(seed.length));
@@ -216,59 +188,40 @@ function toggleLights(open = !$('lights').classList.contains('open')) {
   $('btn-light').setAttribute('aria-expanded', String(open));
 }
 
-// ——— Stirring the painting ———
+// ——— Tending the pond ———
 
 /** Where the pointer is on the painting, in painting units. */
-function onPaint(e: PointerEvent) {
+function onPaint(e: PointerEvent | MouseEvent) {
   const r = picture.getBoundingClientRect();
   return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H, cx: e.clientX - r.left, cy: e.clientY - r.top };
 }
 
-/**
- * Stir mode: the living paint, which streams across the painting all the time, is stirred by the
- * cursor and splashed by a click. The painting itself is never touched.
- */
-function setStir(on: boolean, quiet = false) {
-  if (on === stir) return;
-  if (on) {
-    if (!finished || mode !== 'easel') {
-      toast('the paint is still wet: wait a moment');
-      return;
-    }
-    toggleLights(false);
-    stir = true;
-    life.stir = true;
-    if (!animate) setAnimate(true);
-    canvasFig.classList.add('stirring');
-    canvasFig.style.touchAction = 'none';
-    toast('stir the painting: move through it, click to splash');
-  } else {
-    stir = false;
-    life.stir = false;
-    life.pointerOut();
-    stirPos = stirPrev = null;
-    canvasFig.classList.remove('stirring');
-    canvasFig.style.touchAction = '';
-    stirCursor.classList.remove('on');
-    if (!quiet) toast('the painting settles');
-  }
-  $('btn-stir').setAttribute('aria-pressed', String(stir));
+/** The pointer has left the painting. */
+function tendOut() {
+  life.pointerOut();
+  life.tending = false;
+  tendCursor.classList.remove('on');
+}
+
+/** The pond is live (the A button): the painting moves, and it can be tended. Switching it off stills it. */
+function toggleLive() {
+  setAnimate(!animate);
+  toast(animate ? 'the pond is live: click the water to plant a lily, drag to scatter petals' : 'the pond is still');
 }
 
 canvasFig.addEventListener('pointermove', (e) => {
-  if (!stir) return;
-  stirPos = onPaint(e);
-  stirCursor.style.transform = `translate(${stirPos.cx}px, ${stirPos.cy}px) translate(-50%, -50%)`;
-  stirCursor.classList.add('on');
+  if (!animate || !finished || mode !== 'easel') return;
+  const p = onPaint(e);
+  tendCursor.style.transform = `translate(${p.cx}px, ${p.cy}px) translate(-50%, -50%)`;
+  tendCursor.classList.add('on');
+  life.tending = true;
+  life.pointer(p.x, p.y);
+  // Dragging (a held button, a finger, a pen) scatters petals along the way.
+  if (e.buttons) life.sprinkle(p.x, p.y);
 });
-const stirLeave = () => {
-  stirPos = stirPrev = null;
-  life.pointerOut();
-  stirCursor.classList.remove('on');
-};
-canvasFig.addEventListener('pointerleave', stirLeave);
+canvasFig.addEventListener('pointerleave', tendOut);
 canvasFig.addEventListener('pointerup', (e) => {
-  if (stir && e.pointerType !== 'mouse') stirLeave();
+  if (e.pointerType !== 'mouse') tendOut();
 });
 
 // ——— Drifting ———
@@ -288,7 +241,6 @@ function startDrift() {
 function enterDrift(immediate = false) {
   if (mode === 'drift') return;
   mode = 'drift';
-  setStir(false, true);
   storage('monet-stepped', '1');
   $('invite').classList.remove('show');
   $('btn-drift').classList.remove('pulse');
@@ -370,7 +322,15 @@ async function savePicture() {
     toast('still wet: wait for the last touches');
     return;
   }
-  const card = await makePostcard(picture, { title: garden.series.title, line: garden.classic ? 'after Monet, 1899' : `canvas no. ${seed}`, seed });
+  // What has been planted in the pond goes on the postcard too.
+  const comp = document.createElement('canvas');
+  comp.width = picture.width;
+  comp.height = picture.height;
+  const cctx = comp.getContext('2d')!;
+  cctx.drawImage(picture, 0, 0);
+  cctx.scale(picture.width / W, picture.height / H);
+  life.paintPlanted(cctx);
+  const card = await makePostcard(comp, { title: garden.series.title, line: garden.classic ? 'after Monet, 1899' : `canvas no. ${seed}`, seed });
   download(card, `monet-${seed}.png`);
 }
 
@@ -408,7 +368,9 @@ function toast(msg: string) {
 
 function setAnimate(on: boolean) {
   animate = on;
-  if (!on) setStir(false, true);
+  canvasFig.classList.toggle('live', on);
+  canvasFig.style.touchAction = on ? 'none' : '';
+  if (!on) tendOut();
   $('btn-animate').setAttribute('aria-pressed', String(on));
   if (!on) lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);
 }
@@ -419,9 +381,8 @@ $('btn-new').onclick = () => setSeed(randomSeed());
 $('btn-drift').onclick = () => enterDrift();
 $('btn-back').onclick = () => leaveDrift();
 $('btn-pause').onclick = () => togglePause();
-$('btn-animate').onclick = () => setAnimate(!animate);
+$('btn-animate').onclick = () => toggleLive();
 $('btn-light').onclick = () => toggleLights();
-$('btn-stir').onclick = () => setStir(!stir);
 $('btn-save').onclick = () => savePicture();
 $('btn-snap').onclick = () => savePicture();
 $('btn-share').onclick = () => share();
@@ -430,12 +391,23 @@ $('about-classic').onclick = () => {
   $<HTMLDialogElement>('about').close();
   setSeed(CLASSIC_SEED);
 };
+// A click tends the pond while it is live (plants a lily on the water, shakes petals from the leaves);
+// a double-click, or the boat on the palette, steps inside. With the pond still, one click steps inside.
+let downAt = { x: 0, y: 0 };
+canvasFig.addEventListener('pointerdown', (e) => {
+  downAt = { x: e.clientX, y: e.clientY };
+});
 canvasFig.addEventListener('click', (e) => {
   if (mode !== 'easel' || !finished) return;
-  if (stir) {
-    const p = onPaint(e as PointerEvent);
-    life.burst(p.x, p.y);
+  // The end of a drag is not a click: it only scattered petals.
+  if (animate && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return;
+  if (animate) {
+    const p = onPaint(e);
+    life.tend(p.x, p.y);
   } else enterDrift();
+});
+canvasFig.addEventListener('dblclick', () => {
+  if (mode === 'easel' && finished) enterDrift();
 });
 addEventListener('pointerdown', (e) => {
   if (!(e.target as HTMLElement).closest('.palette')) toggleLights(false);
@@ -470,13 +442,15 @@ addEventListener('keydown', (e) => {
   switch (e.code) {
     case 'KeyN': setSeed(randomSeed()); break;
     case 'KeyD': enterDrift(); break;
-    case 'KeyA': setAnimate(!animate); break;
+    case 'KeyA': toggleLive(); break;
     case 'KeyL': cycleLight(); break;
-    case 'KeyB': setStir(!stir); break;
-    case 'Escape':
-      toggleLights(false);
-      setStir(false);
+    case 'KeyR':
+      if (life.count) {
+        life.clear();
+        toast('the pond is clear again');
+      }
       break;
+    case 'Escape': toggleLights(false); break;
     case 'KeyS': savePicture(); break;
     case 'KeyC': share(); break;
     case 'KeyI': case 'Slash': $<HTMLDialogElement>('about').showModal(); break;
@@ -526,12 +500,6 @@ function frame(now: number) {
   if (mode === 'easel' || app.classList.contains('stepping')) {
     pool.request(tileJobs());
     if (animate && mode === 'easel') {
-      // The cursor, as a velocity, for the living paint to be stirred by.
-      if (stir && stirPos) {
-        const d = Math.max(dt, 1 / 240), p = stirPrev ?? stirPos;
-        life.pointer(stirPos.x, stirPos.y, (stirPos.x - p.x) / d, (stirPos.y - p.y) / d);
-        stirPrev = stirPos;
-      }
       life.update(dt);
       lifeCtx.setTransform(1, 0, 0, 1, 0, 0);
       lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);

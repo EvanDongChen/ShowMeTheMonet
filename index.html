@@ -85,7 +85,7 @@
             <canvas id="picture" aria-label="A painting of a Japanese footbridge over a pond of water lilies"></canvas>
             <canvas id="picture-life" aria-hidden="true"></canvas>
             <div class="wet" aria-hidden="true"></div>
-            <div class="stir-cursor" id="stir-cursor" aria-hidden="true"></div>
+            <div class="tend-cursor" id="tend-cursor" aria-hidden="true"></div>
           </figure>
           <div class="ledge" aria-hidden="true"></div>
           <div class="tag" id="tag">
@@ -120,8 +120,8 @@
 
       <div class="invite" id="invite" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M3 15 Q12 20 21 15 L18 18 Q12 21 6 18Z" /><path d="M12 15 V5 L17 12 Z" /></svg>
-        <span class="invite-mouse">click the painting to step inside</span>
-        <span class="invite-touch">tap the painting to step inside</span>
+        <span class="invite-mouse">double-click the painting to step inside</span>
+        <span class="invite-touch">double-tap the painting to step inside</span>
       </div>
 
       <nav class="palette" id="palette" aria-label="Painter's palette">
@@ -164,13 +164,9 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" /></svg>
             <span class="dab-label">choose the light</span>
           </button>
-          <button class="dab dab-stir" id="btn-stir" style="--x: 205px; --y: 96px" aria-label="Stir the painting (B)" aria-pressed="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.4 11.1 L12.9 11.0 L13.5 11.3 L13.9 11.9 L14.2 12.7 L14.0 13.6 L13.4 14.5 L12.5 15.2 L11.2 15.4 L9.8 15.2 L8.6 14.3 L7.6 13.0 L7.3 11.3 L7.6 9.4 L8.6 7.7 L10.3 6.5 L12.5 6.0 L14.8 6.3 L16.9 7.5 L18.5 9.5 L19.3 12.1 L19.1 14.8 L17.8 17.5 L15.5 19.5 L12.5 20.6 L9.3 20.5 L6.2 19.1" /></svg>
-            <span class="dab-label">stir the painting</span>
-          </button>
-          <button class="dab dab-animate" id="btn-animate" style="--x: 230px; --y: 54px" aria-label="Animate (A)" aria-pressed="true">
+          <button class="dab dab-animate" id="btn-animate" style="--x: 230px; --y: 54px" aria-label="Live pond (A)" aria-pressed="true">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 Q7 7 11 10 T19 10 M5 15 Q9 12 13 15 T21 15" /></svg>
-            <span class="dab-label">ripple</span>
+            <span class="dab-label">live pond</span>
           </button>
           <button class="dab dab-save" id="btn-save" style="--x: 182px; --y: 176px" aria-label="Make a postcard (S)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 V15 M7 10 l5 5 5 -5 M5 20 H19" /></svg>
@@ -210,9 +206,9 @@
             arch of the footbridge, the willows, the rafts of lilies and the light they're seen in. Monet painted the
             bridge again and again, in every light; <strong>choose the light</strong> and the canvas is painted over in
             another of his series. Seed <button type="button" class="link" id="about-classic">1899</button> paints his
-            own composition. The painting is alive: its strokes of paint stream along the pond's currents. Switch on
-            <strong>Stir the painting</strong> and your cursor stirs them into eddies and leaves a trail of fresh paint; ripples
-            spread, the lilies you brush past send out rings, the flowers glow, and a click splashes.
+            own composition. The pond is alive. With <strong>Live pond</strong> on, click the water to plant a water lily that grows from a bud into a
+            bloom, shake petals loose from the leaves, and drag to scatter them; the dragonfly will come to hover over
+            what you plant, and it is all still there when you return. Switch it off and the painting is perfectly still.
           </p>
           <p>
             <strong>Step inside</strong> and you pass through the canvas into a rowboat and row on through an endless water garden
@@ -223,9 +219,9 @@
           <dl class="keys">
             <dt>N</dt><dd>new canvas</dd>
             <dt>D</dt><dd>step inside / step out</dd>
-            <dt>A</dt><dd>ripple (animate)</dd>
+            <dt>A</dt><dd>live pond: it moves, and you can tend it</dd>
             <dt>L</dt><dd>change the light</dd>
-            <dt>B</dt><dd>stir the painting (click to splash)</dd>
+            <dt>R</dt><dd>clear what you have planted</dd>
             <dt>S</dt><dd>make a postcard</dd>
             <dt>C</dt><dd>copy a link</dd>
             <dt>W A S D</dt><dd>row and steer, in the boat</dd>
