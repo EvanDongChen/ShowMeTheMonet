@@ -17,6 +17,7 @@ import { CLASSIC_SEED } from './world/giverny';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const app = $('app');
 const picture = $<HTMLCanvasElement>('picture'), pictureCtx = picture.getContext('2d')!;
+const bridge = document.createElement('canvas'), bridgeCtx = bridge.getContext('2d')!;
 const lifeCanvas = $<HTMLCanvasElement>('picture-life'), lifeCtx = lifeCanvas.getContext('2d')!;
 const driftCanvas = $<HTMLCanvasElement>('drift'), driftCtx = driftCanvas.getContext('2d')!;
 const canvasFig = $('canvas'), seedInput = $<HTMLInputElement>('seed');
@@ -55,25 +56,30 @@ function randomSeed() {
 
 // ——— Painting the easel ———
 
-const tileId = (t: number) => `tile:${t}@${scale.toFixed(3)}`;
+const tileId = (t: number, layer: 'base' | 'bridge') => `tile:${layer}:${t}@${scale.toFixed(3)}`;
 
 function tileJobs(): [string, Job][] {
-  return Array.from({ length: TILES }, (_, t) => [tileId(t), { type: 'tile', t, scale }] as [string, Job]);
+  const jobs: [string, Job][] = [];
+  for (const layer of ['base', 'bridge'] as const) for (let t = 0; t < TILES; t++) {
+    jobs.push([tileId(t, layer), { type: 'tile', t, scale, layer }]);
+  }
+  return jobs;
 }
 
 function onPainted(id: string) {
   if (!id.startsWith('tile:')) return;
-  const [t, at] = id.slice(5).split('@');
+  const [, layer, t, at] = id.split(/[:@]/);
   if (at !== scale.toFixed(3)) return;
-  const im = pool.get(id), r = tileRect(+t, scale);
-  if (im?.image) pictureCtx.drawImage(im.image, r.px0, r.py0);
+  const im = pool.get(id), r = tileRect(+t, scale), ctx = layer === 'bridge' ? bridgeCtx : pictureCtx;
+  if (im?.image) ctx.drawImage(im.image, r.px0, r.py0);
+  if (layer === 'bridge' && im?.image) pictureCtx.drawImage(im.image, r.px0, r.py0);
   progress();
 }
 
 function progress() {
   let sum = 0;
-  for (let t = 0; t < TILES; t++) sum += pool.get(tileId(t))?.progress ?? 0;
-  const p = sum / TILES, state = $('state');
+  for (const layer of ['base', 'bridge'] as const) for (let t = 0; t < TILES; t++) sum += pool.get(tileId(t, layer))?.progress ?? 0;
+  const p = sum / (TILES * 2), state = $('state');
   finished = p >= 0.999;
   canvasFig.classList.toggle('painting', !finished);
   canvasFig.classList.toggle('ready', finished);
@@ -100,11 +106,15 @@ function layout() {
     const px = picturePixels(scale);
     picture.width = px.w;
     picture.height = px.h;
+    bridge.width = px.w;
+    bridge.height = px.h;
     pictureCtx.fillStyle = '#ebe4d4';
     pictureCtx.fillRect(0, 0, px.w, px.h);
     if (pool) {
       pool.evict((id) => !id.startsWith('tile:'));
-      for (let t = 0; t < TILES; t++) onPainted(tileId(t));
+      pictureCtx.clearRect(0, 0, picture.width, picture.height);
+      bridgeCtx.clearRect(0, 0, bridge.width, bridge.height);
+      for (const layer of ['base', 'bridge'] as const) for (let t = 0; t < TILES; t++) onPainted(tileId(t, layer));
     }
   }
   lifeCanvas.width = Math.round(pw * dpr);
@@ -130,6 +140,7 @@ function setSeed(next: string, push = true, keepLight = false) {
   canvasFig.style.setProperty('--zx', `${(b.cx / W) * 100}%`);
   canvasFig.style.setProperty('--zy', `${((garden.deckY(b.cx) + garden.waterTop) / 2 / H) * 100}%`);
   picture.width = 0;
+  bridge.width = 0;
   layout();
   progress();
   if (push) {
@@ -492,7 +503,7 @@ function frame(now: number) {
       lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);
       if (finished) {
         lifeCtx.setTransform(lifeCanvas.width / W, 0, 0, lifeCanvas.height / H, 0, 0);
-        life.draw(lifeCtx, t, picture);
+        life.draw(lifeCtx, t, picture, bridge);
       }
     }
   }

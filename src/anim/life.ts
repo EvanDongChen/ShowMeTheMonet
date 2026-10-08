@@ -430,9 +430,10 @@ export class Life {
   }
 
   /** Draw in painting units; the caller has set the transform from painting units to pixels. */
-  draw(ctx: CanvasRenderingContext2D, t: number, picture?: HTMLCanvasElement) {
+  draw(ctx: CanvasRenderingContext2D, t: number, picture?: HTMLCanvasElement, bridge?: HTMLCanvasElement) {
     const s = this.g.series;
     if (picture) this.drawLiving(ctx, picture, t);
+    if (bridge) ctx.drawImage(bridge, 0, 0, W, H);
     for (const sp of this.sparks) {
       const a = Math.max(0, Math.sin(t * sp.speed + sp.ph)) ** 3;
       if (a < 0.02) continue;
