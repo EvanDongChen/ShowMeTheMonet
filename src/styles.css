@@ -182,34 +182,9 @@ button { font: inherit; color: inherit; }
   z-index: 2;
 }
 
-/* The picture light. */
-.picture-light {
-  position: absolute;
-  left: 50%;
-  top: -62px;
-  width: min(44%, 360px);
-  height: 11px;
-  transform: translateX(-50%);
-  border-radius: 6px;
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 2px, rgba(0, 0, 0, 0.05) 2px 5px),
-    linear-gradient(180deg, var(--wood-light), var(--wood) 55%, var(--wood-dark));
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
-  z-index: 0;
-}
-.picture-light::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 4px; height: 20px; margin-left: -2px; background: linear-gradient(90deg, var(--wood-dark), var(--wood-light), var(--wood-dark)); }
-.picture-light::after {
-  content: '';
-  position: absolute;
-  left: -18%;
-  top: 6px;
-  width: 136%;
-  height: 120px;
-  background: radial-gradient(ellipse 60% 100% at 50% 0, rgba(255, 226, 158, 0.5), rgba(255, 226, 158, 0.12) 55%, rgba(255, 226, 158, 0));
-  filter: blur(6px);
-  pointer-events: none;
-  z-index: -1;
-}
+
+
+
 
 /* The canvas itself: stretched linen with its raw edge showing, casting a soft shadow. */
 .canvas {
@@ -304,7 +279,7 @@ button { font: inherit; color: inherit; }
 .canvas.ready:hover #picture { filter: brightness(1.04) saturate(1.05); }
 
 /* ——— Stepping in ——— */
-.stepping .picture-light { opacity: 0; transition: opacity 0.5s ease; }
+
 
 .stepping .canvas {
   transform: scale(4.2);
@@ -440,8 +415,8 @@ button { font: inherit; color: inherit; }
 @keyframes nudge { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-4px); } }
 .dab.pulse { animation: ring 2.2s ease-out infinite; }
 @keyframes ring {
-  0% { box-shadow: 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12), 0 0 0 0 rgba(232, 164, 172, 0.7); }
-  70%, 100% { box-shadow: 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12), 0 0 0 20px rgba(232, 164, 172, 0); }
+  0% { box-shadow: 0 0 0 1.6px #2c1b0e, 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12), 0 0 0 1.6px rgba(232, 164, 172, 0.7); }
+  70%, 100% { box-shadow: 0 0 0 1.6px #2c1b0e, 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12), 0 0 0 22px rgba(232, 164, 172, 0); }
 }
 
 /* ——— The palette ——— */
@@ -459,7 +434,7 @@ button { font: inherit; color: inherit; }
 }
 [data-mode='drift'] .palette { transform: scale(0.72); }
 .palette-board { position: absolute; inset: 0; width: 100%; height: 100%; }
-.palette-board .thumb { fill: #202b26; stroke: rgba(0, 0, 0, 0.35); stroke-width: 2; }
+.palette-board .thumb { fill: #202b26; stroke: #2c1b0e; stroke-width: 2.6; }
 [data-mode='drift'] .palette-board .thumb { fill: rgba(40, 50, 40, 0.0); }
 
 .dabs { position: absolute; inset: 0; transition: opacity 0.4s ease; }
@@ -483,7 +458,7 @@ button { font: inherit; color: inherit; }
     radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 38%),
     radial-gradient(circle at 70% 78%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0) 55%),
     var(--paint);
-  box-shadow: 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 0 1.6px #2c1b0e, 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -491,6 +466,7 @@ button { font: inherit; color: inherit; }
 }
 .dab:nth-child(2n) { border-radius: 44% 56% 46% 54% / 58% 44% 56% 42%; }
 .dab:hover, .dab:focus-visible {
+  z-index: 6;
   transform: scale(1.12) rotate(-4deg);
   border-radius: 50% 50% 54% 46% / 46% 54% 46% 54%;
 }
@@ -507,24 +483,30 @@ button { font: inherit; color: inherit; }
 }
 .dab-label {
   position: absolute;
-  bottom: calc(100% + 4px);
+  bottom: calc(100% + 8px);
   left: 50%;
-  transform: translateX(-50%) rotate(-3deg);
-  font-family: var(--hand);
-  font-size: 15px;
+  transform: translateX(-50%);
+  padding: 4px 11px 5px;
+  font-family: var(--ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
   white-space: nowrap;
   color: #f6f1e6;
+  background: rgba(24, 20, 14, 0.9);
+  border: 1px solid rgba(255, 236, 200, 0.3);
+  border-radius: 999px;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s ease;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 10px rgba(0, 0, 0, 0.6);
 }
-.dab:hover .dab-label, .dab:focus-visible .dab-label { opacity: 1; }
-/* Pointing at the palette anywhere names every paint on it. */
-.palette:hover .dabs[data-for='easel'] .dab-label, .palette:hover .dabs[data-for='drift'] .dab-label { opacity: 0.9; }
+.dab:hover .dab-label, .dab:focus-visible .dab-label { opacity: 1; transform: translateX(-50%) rotate(4deg) scale(0.89); }
+.dab-drift, .dab-back { z-index: 3; }
 .dab-drift { --size: 64px; --paint: var(--rose); }
 .dab-drift svg path { fill: rgba(30, 36, 32, 0.12); }
-.dab-drift .dab-label, .dab-back .dab-label { opacity: 1; font-size: 17px; bottom: auto; top: calc(100% + 1px); transform: translateX(-50%) rotate(2deg); }
+.dab-drift .dab-label, .dab-back .dab-label { opacity: 1; bottom: auto; top: calc(100% + 8px); }
 .dab-new { --paint: var(--sage); }
 .dab-animate { --paint: var(--water); }
 .dab-animate[aria-pressed='false'] { filter: saturate(0.25) brightness(1.08); }
@@ -535,7 +517,7 @@ button { font: inherit; color: inherit; }
 .dab-back { --size: 64px; --paint: var(--sage); }
 .dab-pause { --paint: var(--water); }
 .dab-pause[aria-pressed='true'] { --paint: var(--rose); }
-[data-mode='drift'] .dab-label { color: var(--ink); text-shadow: 0 0 4px var(--paper), 0 0 10px var(--paper); }
+
 
 /* Choosing the light: five blobs of paint, one for each of Monet's series. */
 .lights {
@@ -570,7 +552,7 @@ button { font: inherit; color: inherit; }
   background:
     radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 40%),
     linear-gradient(135deg, var(--a) 0 38%, var(--b) 38% 70%, var(--c) 70%);
-  box-shadow: 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 0 1.6px #2c1b0e, 1px 3px 4px rgba(var(--shadow), 0.3), inset -2px -3px 5px rgba(0, 0, 0, 0.12);
   cursor: pointer;
   transition: transform 0.3s var(--ease);
 }
@@ -653,7 +635,6 @@ button { font: inherit; color: inherit; }
 /* ——— Small screens ——— */
 
 @media (max-width: 720px) {
-  .picture-light { display: none; }
   .canvas::before, .canvas::after { inset: -18px; }
   .canvas::before { box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6), inset 0 0 0 2px #2c1b0e, inset 0 0 0 6px #c29468, inset 0 0 0 7px #6f4a2e, inset 0 0 0 12px #d8b48a, inset 0 0 0 15px #b08259, inset 0 0 0 18px #20140a; }
   .tag { top: calc(100% + 38px); }

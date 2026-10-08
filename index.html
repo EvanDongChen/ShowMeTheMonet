@@ -76,7 +76,6 @@
 
       <main id="easel-view" aria-label="The easel">
         <div class="easel" id="easel">
-          <div class="picture-light" aria-hidden="true"></div>
           <div class="leg leg-l" aria-hidden="true"></div>
           <div class="leg leg-r" aria-hidden="true"></div>
           <div class="leg leg-back" aria-hidden="true"></div>
@@ -137,6 +136,7 @@
               <stop offset="0.6" stop-color="#c29468" />
               <stop offset="1" stop-color="#9c7048" />
             </radialGradient>
+            <clipPath id="board-clip"><path d="M40 70 C40 22 120 8 190 14 C262 20 312 58 306 118 C300 176 242 212 168 208 C112 205 88 188 92 160 C95 140 118 138 118 120 C118 100 92 96 70 104 C48 112 40 96 40 70Z" /></clipPath>
             <filter id="grain" x="0" y="0" width="100%" height="100%">
               <feTurbulence type="fractalNoise" baseFrequency="0.012 0.25" numOctaves="2" seed="4" />
               <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.12  0 0 0 0.16 0" />
@@ -145,6 +145,9 @@
           </defs>
           <path class="board" fill="url(#wood)" d="M40 70 C40 22 120 8 190 14 C262 20 312 58 306 118 C300 176 242 212 168 208 C112 205 88 188 92 160 C95 140 118 138 118 120 C118 100 92 96 70 104 C48 112 40 96 40 70Z" />
           <path filter="url(#grain)" d="M40 70 C40 22 120 8 190 14 C262 20 312 58 306 118 C300 176 242 212 168 208 C112 205 88 188 92 160 C95 140 118 138 118 120 C118 100 92 96 70 104 C48 112 40 96 40 70Z" />
+          <path d="M40 70 C40 22 120 8 190 14 C262 20 312 58 306 118 C300 176 242 212 168 208 C112 205 88 188 92 160 C95 140 118 138 118 120 C118 100 92 96 70 104 C48 112 40 96 40 70Z" fill="none" stroke="#3b2514" stroke-opacity="0.38" stroke-width="14" stroke-linejoin="round" clip-path="url(#board-clip)" />
+          <path d="M40 70 C40 22 120 8 190 14 C262 20 312 58 306 118 C300 176 242 212 168 208 C112 205 88 188 92 160 C95 140 118 138 118 120 C118 100 92 96 70 104 C48 112 40 96 40 70Z" fill="none" stroke="#f6dfb8" stroke-opacity="0.35" stroke-width="3" stroke-linejoin="round" transform="translate(-1.5 -1.5)" clip-path="url(#board-clip)" />
+          <path d="M40 70 C40 22 120 8 190 14 C262 20 312 58 306 118 C300 176 242 212 168 208 C112 205 88 188 92 160 C95 140 118 138 118 120 C118 100 92 96 70 104 C48 112 40 96 40 70Z" fill="none" stroke="#2c1b0e" stroke-width="3.2" stroke-linejoin="round" />
           <ellipse class="thumb" cx="78" cy="68" rx="17" ry="13" />
         </svg>
         <div class="dabs" data-for="easel">
