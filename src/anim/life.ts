@@ -30,6 +30,10 @@ interface Planted extends Saved {
 }
 
 const MAX_PLANTED = 80;
+/** The spring grid: columns across the painting, and rows of ROW units down it. */
+const GW = 10;
+const ROW = 10;
+const GH = Math.ceil(H / ROW);
 /** Sprites are painted at this many pixels per painting unit, so planted lilies stay crisp. */
 const S = 2;
 
@@ -45,6 +49,16 @@ export class Life {
   private sprinkleAt = 0;
   /** How far the cursor has travelled since it last planted something, and when it may next. */
   private travelled = 0;
+  /** The cursor's velocity in painting units per second, and when it last moved. */
+  private cvx = 0;
+  private cvy = 0;
+  private lastMove = 0;
+  /** A grid of springs over the whole painting: the cursor shoves the leaves and reeds, and they swing back. */
+  private gx = new Float32Array(GW * GH);
+  private gv = new Float32Array(GW * GH);
+  /** Ripples spreading over the water from where the cursor passed. */
+  private wakes: { x: number; y: number; t: number; s: number }[] = [];
+  private lastWake = { x: -999, y: -999 };
   private plantAt = 0;
   /** Is the pond being tended (the pointer is over the painting and the mode is on)? */
   tending = false;
@@ -128,10 +142,23 @@ export class Life {
   /** Where the cursor is, in painting units. */
   pointer(x: number, y: number) {
     const c = this.cur, d = c.on ? Math.hypot(x - c.x, y - c.y) : 0;
+    // How fast the cursor is moving, smoothed so a jittery mouse still reads as one motion.
+    if (c.on && this.tending) {
+      const dt = Math.max(1 / 120, this.t - this.lastMove), k = Math.min(1, dt * 14);
+      this.cvx += ((x - c.x) / dt - this.cvx) * k;
+      this.cvy += ((y - c.y) / dt - this.cvy) * k;
+    }
+    this.lastMove = this.t;
     c.x = x;
     c.y = y;
     c.on = true;
     if (!this.tending || d < 0.5) return;
+    // On the water the cursor sends ripples spreading out from where it passes.
+    if (this.onWater(x, y) && Math.hypot(x - this.lastWake.x, y - this.lastWake.y) > 26) {
+      this.wakes.push({ x, y, t: this.t, s: clamp(Math.hypot(this.cvx, this.cvy) / 500, 0.45, 1) });
+      if (this.wakes.length > 14) this.wakes.shift();
+      this.lastWake = { x, y };
+    }
     // Moving through the pond tends it: petals scatter as you go, and a lily is planted every so far.
     this.sprinkle(x, y);
     this.travelled += d;
@@ -191,6 +218,7 @@ export class Life {
   update(dt: number) {
     const g = this.g;
     this.t += dt;
+    this.physics(dt);
     if (Math.random() < dt * 0.7) {
       const x = Math.random() * W, y = lerp(g.waterTop + 10, H - 10, Math.random());
       if (!this.onPad(x, y)) this.rings.push({ x, y, age: 0, life: 3 + Math.random() * 2, size: lerp(14, 60, g.depth(y)) });
@@ -253,6 +281,43 @@ export class Life {
     }
   }
 
+  /**
+   * The cursor's push on the painting. A grid of springs lies over it: near the cursor each cell is
+   * shoved the way the cursor is going (and a little away from it), then swings back and settles,
+   * dragging its neighbours so the movement travels outward and rolls on after the cursor has gone.
+   */
+  private physics(dt: number) {
+    const c = this.cur, live = this.tending && c.on;
+    // A cursor that stops stops pushing.
+    if (this.t - this.lastMove > 0.06) {
+      const k = Math.exp(-dt * 9);
+      this.cvx *= k;
+      this.cvy *= k;
+    }
+    this.wakes = this.wakes.filter((w) => this.t - w.t < 2.2);
+    const cw = W / GW, R2 = 120 * 120, sx = this.gx, sv = this.gv, step = Math.min(dt, 0.033);
+    for (let j = 0; j < GH; j++) {
+      const y = (j + 0.5) * ROW;
+      for (let i = 0; i < GW; i++) {
+        const k = j * GW + i, x = (i + 0.5) * cw;
+        let acc = -46 * sx[k] - 3.2 * sv[k];
+        // Neighbours pull on each other, so a shove travels along the foliage and across the water.
+        const l = i > 0 ? sx[k - 1] : sx[k], r = i < GW - 1 ? sx[k + 1] : sx[k], u = j > 0 ? sx[k - GW] : sx[k], d = j < GH - 1 ? sx[k + GW] : sx[k];
+        acc += 16 * (l + r + u + d - 4 * sx[k]);
+        if (live) {
+          const dx = x - c.x, dy = y - c.y, d2 = dx * dx + dy * dy;
+          if (d2 < R2 * 4) {
+            const f = Math.exp(-d2 / R2), away = dx / (Math.sqrt(d2) + 20);
+            // The leaves are shoved the way the cursor goes, and brushed aside as it passes.
+            acc += (this.cvx * 1.1 + away * Math.hypot(this.cvx, this.cvy) * 0.5) * f;
+          }
+        }
+        sv[k] += acc * step;
+        sx[k] = clamp(sx[k] + sv[k] * step, -22, 22);
+      }
+    }
+  }
+
   /** The planted lilies, at a given moment of their growing. Pass a large `age` for fully grown. */
   private drawPlanted(ctx: CanvasRenderingContext2D, now: number, still = false) {
     for (const p of this.planted) {
@@ -292,7 +357,13 @@ export class Life {
    * so switching the pond off (or a postcard) gives back the still painting.
    */
   private drawLiving(ctx: CanvasRenderingContext2D, picture: HTMLCanvasElement, t: number) {
-    const g = this.g, k = picture.width / W, wt = g.waterTop, cols = 6, cw = W / cols;
+    const g = this.g, k = picture.width / W, wt = g.waterTop, cols = GW, cw = W / cols, grid = this.gx;
+    // The spring grid between its cell centres, so a shove leans smoothly across the leaves.
+    const gridAt = (x: number, j: number) => {
+      const f = clamp(x / cw - 0.5, 0, cols - 1), i = Math.min(cols - 2, Math.floor(f)), u = f - i;
+      return grid[j * GW + i] * (1 - u) + grid[j * GW + i + 1] * u;
+    };
+    const sub = 3, sw = cw / sub;
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
@@ -314,25 +385,56 @@ export class Life {
     }
     ctx.closePath();
     ctx.clip('evenodd');
-    for (let y = 0; y < wt; y += 10) {
-      const h = Math.min(10, wt - y), env = Math.pow(Math.sin(Math.PI * (y / wt)), 0.8);
+    for (let y = 0; y < wt; y += ROW) {
+      const h = Math.min(ROW, wt - y), env = Math.pow(Math.sin(Math.PI * (y / wt)), 0.8), j = Math.min(GH - 1, Math.floor(y / ROW));
       for (let i = 0; i < cols; i++) {
         const cx = i * cw, gust = 0.65 + 0.35 * Math.sin(t * 0.35 + cx * 0.004), willow = 1 + 1.3 * g.willow(cx + cw / 2);
-        const dx = env * gust * willow * (2.6 * Math.sin(t * 0.9 + y * 0.012 + cx * 0.006) + 1.1 * Math.sin(t * 1.7 + y * 0.03 + cx * 0.01));
-        ctx.drawImage(picture, cx * k, y * k, (cw + 1) * k, (h + 0.6) * k, cx + dx, y, cw + 1, h + 0.6);
+        const wind = env * gust * willow * (2.6 * Math.sin(t * 0.9 + y * 0.012 + cx * 0.006) + 1.1 * Math.sin(t * 1.7 + y * 0.03 + cx * 0.01));
+        const push = (0.5 + 0.5 * env) * (0.7 + 0.5 * willow);
+        // Where the cursor has set the leaves swinging, draw them in narrow slices so they bend rather than step.
+        if (Math.abs(grid[j * GW + i]) + Math.abs(grid[j * GW + Math.min(cols - 1, i + 1)]) > 1.2) {
+          for (let q = 0; q < sub; q++) {
+            const sx = cx + q * sw;
+            ctx.drawImage(picture, sx * k, y * k, (sw + 1) * k, (h + 0.6) * k, sx + wind + gridAt(sx + sw / 2, j) * push, y, sw + 1, h + 0.6);
+          }
+        } else {
+          ctx.drawImage(picture, cx * k, y * k, (cw + 1) * k, (h + 0.6) * k, cx + wind + grid[j * GW + i] * push, y, cw + 1, h + 0.6);
+        }
       }
     }
     ctx.restore();
 
-    // The water: reflections shimmer, and the pads and flowers bob.
+    // The water: reflections shimmer, the pads and flowers bob, the cursor's ripples roll through.
+    const wakes = this.wakes, now = this.t;
     for (let y = wt; y < H; y += 7) {
-      const h = Math.min(7, H - y), d = g.depth(y), amp = lerp(0.6, 3, d), bob = lerp(0.6, 2.8, d);
+      const h = Math.min(7, H - y), d = g.depth(y), amp = lerp(0.6, 3, d), bob = lerp(0.6, 2.8, d), j = Math.min(GH - 1, Math.floor(y / ROW)), yc = y + h / 2, scale = lerp(0.8, 1.6, d);
       for (let i = 0; i < cols; i++) {
         const cx = i * cw;
-        const dx = amp * (Math.sin(t * 1.5 + y * 0.09 + cx * 0.01) + 0.6 * Math.sin(t * 2.6 + y * 0.21 + cx * 0.02));
-        const dy = bob * Math.sin(t * 1.1 + y * 0.05 + cx * 0.008);
-        const sy = clamp(y + dy, 0, H - h - 0.6);
-        ctx.drawImage(picture, cx * k, sy * k, (cw + 1) * k, (h + 0.6) * k, cx + dx, y, cw + 1, h + 0.6);
+        // Is a ripple front (or the cursor's drag) passing through this stretch of water? Then it is drawn in narrow slices.
+        let active = Math.abs(grid[j * GW + i]) > 1.2;
+        for (let q = 0; !active && q < wakes.length; q++) {
+          const w = wakes[q], rx = cx + cw / 2 - w.x, ry = (yc - w.y) * 2.4;
+          active = Math.abs(Math.hypot(rx, ry) - 80 * (now - w.t)) < cw * 0.6 + 45;
+        }
+        const slices = active ? sub : 1, width = cw / slices;
+        for (let q = 0; q < slices; q++) {
+          const sx = cx + q * width, xc = sx + width / 2;
+          let dx = amp * (Math.sin(t * 1.5 + y * 0.09 + xc * 0.01) + 0.6 * Math.sin(t * 2.6 + y * 0.21 + xc * 0.02)) + gridAt(xc, j) * 0.6;
+          let dy = bob * Math.sin(t * 1.1 + y * 0.05 + xc * 0.008);
+          if (active) {
+            for (const w of wakes) {
+              const age = Math.max(0, now - w.t);
+              // A ring spreading out (squashed, for the perspective of the water), with a few crests behind its front.
+              const rx = xc - w.x, ry = (yc - w.y) * 2.4, r = Math.hypot(rx, ry) + 1, band = r - 80 * age;
+              const wave = w.s * Math.exp(-1.0 * age) * Math.cos(band * 0.2) * Math.exp(-(band * band) / (2 * 50 * 50)) / (1 + r * 0.008);
+              if (Math.abs(wave) < 0.01) continue;
+              dy += wave * 9 * scale;
+              dx += wave * 8 * (rx / r) * scale;
+            }
+          }
+          const sy = clamp(y + dy, 0, H - h - 0.6);
+          ctx.drawImage(picture, sx * k, sy * k, (width + 1) * k, (h + 0.6) * k, sx + dx, y, width + 1, h + 0.6);
+        }
       }
     }
     ctx.restore();
