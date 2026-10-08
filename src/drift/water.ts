@@ -4,9 +4,9 @@
 // in perspective one screen row at a time (each row a pattern fill scaled for its depth), like the
 // floor of an old racing game. Its strokes are half-transparent, so the mirrored garden shows
 // through them: a reflection painted over, as Monet would, rather than a glassy mirror.
-import { css, lighten, mix } from '../core/color';
-import { flat, ramp, touch } from '../core/dab';
-import { clamp } from '../core/math';
+import { css, lighten, mix, type RGB } from '../core/color';
+import { dab, flat, ramp, touch } from '../core/dab';
+import { clamp, TAU } from '../core/math';
 import { Rng } from '../core/rng';
 import type { Garden } from '../world/garden';
 
@@ -107,22 +107,92 @@ export class PaintedWater {
   }
 }
 
-/** The sky glimpsed over the trees: a few loose, pale strokes rather than a gradient. */
-export function paintSky(g: Garden) {
+export interface Sky { canvas: HTMLCanvasElement; /** Where the sun sits: across the sky tile (0..1) and down the sky (0 top, 1 horizon). */ sunU: number; sunV: number; }
+
+/**
+ * The sky glimpsed over the trees, painted as Monet paints it: a soft wash that warms toward the
+ * horizon, loose strokes of cloud-colour worked into it, a low sun's bloom, and heaped clouds
+ * built from creamy touches with violet shade beneath. It wraps at its sides so it can pan forever.
+ */
+export function paintSky(g: Garden): Sky {
   const s = g.series, rng = g.rng(0x5c1), c = document.createElement('canvas');
-  c.width = 640;
-  c.height = 240;
-  const ctx = c.getContext('2d')!;
-  const grad = ctx.createLinearGradient(0, 0, 0, c.height);
-  grad.addColorStop(0, css(lighten(mix(s.air, s.glint[0], 0.5), 0.12)));
-  grad.addColorStop(1, css(s.air));
+  c.width = 1536;
+  c.height = 384;
+  const ctx = c.getContext('2d')!, W = c.width, H = c.height;
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, css(mix(lighten(mix(s.air, s.glint[0], 0.5), 0.04), s.accent[0], 0.16)));
+  grad.addColorStop(0.55, css(lighten(mix(s.air, s.glint[0], 0.35), 0.05)));
+  grad.addColorStop(1, css(lighten(s.air, 0.05)));
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, c.width, c.height);
-  for (let i = 0; i < 260; i++) {
-    const y = rng.random() * c.height, col = rng.chance(0.15) ? mix(s.accent[rng.int(0, 2)], s.air, 0.6) : mix(ramp(s.glint, rng.random()), s.air, 0.3 + (y / c.height) * 0.5);
-    flat(ctx, rng, rng.random() * c.width, y, rng.range(20, 70), rng.range(6, 16), rng.range(-0.25, 0.25), col, rng.range(0.25, 0.55), rng.range(-0.1, 0.1));
+  ctx.fillRect(0, 0, W, H);
+  const wrap = (fn: (ox: number) => void) => { for (const ox of [-W, 0, W]) fn(ox); };
+
+  // Loose horizontal strokes of cloud-colour and blue-violet in the wash.
+  for (let i = 0; i < 380; i++) {
+    const y = rng.random() * H, x = rng.random() * W, seed = rng.int(0, 2 ** 30);
+    const col = rng.chance(0.18) ? mix(s.accent[rng.int(0, 2)], s.air, 0.62) : mix(ramp(s.glint, rng.random()), s.air, 0.3 + (y / H) * 0.5);
+    const len = rng.range(40, 140), wide = rng.range(7, 20), ang = rng.range(-0.12, 0.12), a = rng.range(0.22, 0.5);
+    wrap((ox) => flat(ctx, new Rng(seed), x + ox, y, len, wide, ang, col, a, 0.05));
   }
-  return c;
+
+  // The sun, low and a little warm.
+  const sunU = rng.range(0.2, 0.8), sunV = rng.range(0.45, 0.6), sx = sunU * W, sy = sunV * H;
+  const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, W * 0.16);
+  halo.addColorStop(0, css(mix(s.glint[2], [255, 246, 220], 0.6), 0.9));
+  halo.addColorStop(0.3, css(mix(s.glint[1], s.accent[3], 0.2), 0.4));
+  halo.addColorStop(1, css(s.glint[1], 0));
+  ctx.fillStyle = halo;
+  ctx.fillRect(sx - W * 0.16, sy - W * 0.16, W * 0.32, W * 0.32);
+
+  // Clouds: heaps of soft, overlapping puffs, flatter and smaller toward the horizon, violet in
+  // their shade and cream in the light, with a few rounded touches worked over them.
+  const shadow = mix(s.accent[1], s.air, 0.5), cream = lighten(mix(s.glint[2], s.air, 0.2), 0.05), warm = mix(s.accent[3], [255, 255, 255], 0.65);
+  const puff = (x: number, y: number, r: number, squash: number, col: RGB, alpha: number) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, squash);
+    const gr = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
+    gr.addColorStop(0, css(col, alpha));
+    gr.addColorStop(0.6, css(col, alpha * 0.75));
+    gr.addColorStop(1, css(col, 0));
+    ctx.fillStyle = gr;
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+    ctx.restore();
+  };
+  for (let k = 0; k < 5; k++) {
+    const cx = rng.random() * W, cy = H * (0.12 + rng.random() * 0.6), near = 1 - (cy / H) * 0.5, size = rng.range(110, 230) * near, squash = rng.range(0.5, 0.7);
+    const puffs: { x: number; y: number; r: number; ang: number; seed: number }[] = [];
+    for (let i = rng.int(14, 24); i > 0; i--) {
+      const lift = Math.abs(rng.bell());
+      puffs.push({ x: cx + rng.bell() * size * 1.1, y: cy - lift * size * 0.2 + rng.bell() * size * 0.05, r: size * rng.range(0.22, 0.48), ang: rng.range(-0.2, 0.2), seed: rng.int(0, 2 ** 30) });
+    }
+    wrap((ox) => {
+      for (const p of puffs) puff(p.x + ox, p.y + p.r * 0.3, p.r * 1.05, squash, shadow, 0.4);
+      for (const p of puffs) puff(p.x + ox, p.y, p.r, squash, cream, 0.7);
+      for (const p of puffs) {
+        puff(p.x + ox - p.r * 0.15, p.y - p.r * 0.2, p.r * 0.55, squash, warm, 0.5);
+        const r2 = new Rng(p.seed);
+        for (let i = 0; i < 2; i++) dab(ctx, p.x + ox + r2.range(-0.5, 0.5) * p.r, p.y + r2.range(-0.3, 0.3) * p.r * squash, p.r * r2.range(0.7, 1.2), p.r * r2.range(0.2, 0.35), p.ang, r2.chance(0.5) ? cream : lighten(cream, 0.05), 0.55);
+      }
+    });
+  }
+  // The far treeline, closing the horizon: hazy foliage in three layers, so the sky is only what
+  // shows above and between the trees, and the garden goes on in every direction.
+  const topAt = (x: number, ph: number) => H * (0.58 + 0.045 * Math.sin((x / W) * TAU * 3 + ph) + 0.03 * Math.sin((x / W) * TAU * 8 + ph * 2) + 0.018 * Math.sin((x / W) * TAU * 19 + ph * 3));
+  for (const L of [{ ph: 1.3, dy: -0.07, air: 0.62, light: 0.7 }, { ph: 4.1, dy: 0, air: 0.5, light: 0.5 }, { ph: 2.2, dy: 0.06, air: 0.4, light: 0.38 }]) {
+    for (let x = 0; x < W; x += 9) {
+      const top = topAt(x, L.ph) + L.dy * H;
+      for (let y = top; y < H; y += 8) {
+        const lt = L.light + rng.range(-0.18, 0.18) - ((y - top) / H) * 0.15;
+        let col = mix(ramp(s.foliage, lt), s.air, L.air);
+        if (rng.chance(0.12)) col = mix(s.accent[rng.chance(0.5) ? 3 : 2], col, 0.55);
+        const seed = rng.int(0, 2 ** 30), len = rng.range(16, 30), wide = len * rng.range(0.45, 0.7), ang = Math.PI / 2 + rng.range(-0.9, 0.9);
+        const px = x + rng.range(-5, 5), py = y + rng.range(-3, 3);
+        for (const ox of x < 40 ? [0, W] : x > W - 40 ? [0, -W] : [0]) touch(ctx, new Rng(seed), px + ox, py, len, wide, ang, col, 0.92);
+      }
+    }
+  }
+  return { canvas: c, sunU, sunV };
 }
 
 /** A pattern of canvas weave, laid lightly over the whole view so it reads as a painted surface. */

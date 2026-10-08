@@ -4,16 +4,17 @@
 //
 // Card coordinates are metres, with the origin at the top left and the card's foot on the water
 // at y = h. A card is painted from hash(seed, kind, variant), so a variant always looks the same.
-import { mix, type RGB } from '../core/color';
+import { darken, lighten, mix, type RGB } from '../core/color';
 import { dab, dabLine, flat, ramp, touch, type Ctx, type Pt } from '../core/dab';
 import { lerp } from '../core/math';
 import type { Rng } from '../core/rng';
 import type { Garden } from '../world/garden';
 import type { Series } from '../world/series';
+import { plantTouch } from './foliage';
 import { drawPad } from './lilies';
 import { context2d, makeCanvas, type AnyCanvas } from './tiles';
 
-export type CardKind = 'reeds' | 'iris' | 'grass' | 'flowers' | 'shrub' | 'willow' | 'poplar' | 'backdrop' | 'bridge' | 'pad' | 'bloom';
+export type CardKind = 'reeds' | 'iris' | 'grass' | 'flowers' | 'shrub' | 'willow' | 'poplar' | 'backdrop' | 'bridge' | 'pad' | 'bloom' | 'canopy' | 'boat' | 'lantern';
 
 export interface CardSpec { w: number; h: number; variants: number; ppm: number; }
 
@@ -23,13 +24,16 @@ export const CARDS: Record<CardKind, CardSpec> = {
   grass: { w: 2.2, h: 1, variants: 4, ppm: 56 },
   flowers: { w: 3.2, h: 1.5, variants: 6, ppm: 48 },
   iris: { w: 1.8, h: 1.3, variants: 4, ppm: 56 },
-  shrub: { w: 3.6, h: 2.6, variants: 5, ppm: 44 },
-  willow: { w: 8, h: 9, variants: 5, ppm: 36 },
-  poplar: { w: 3.6, h: 12, variants: 3, ppm: 30 },
-  backdrop: { w: 20, h: 9, variants: 4, ppm: 20 },
+  shrub: { w: 3.6, h: 2.6, variants: 5, ppm: 52 },
+  willow: { w: 8, h: 9, variants: 5, ppm: 40 },
+  poplar: { w: 3.6, h: 12, variants: 3, ppm: 34 },
+  backdrop: { w: 20, h: 9, variants: 4, ppm: 26 },
   bridge: { w: 16, h: 4.4, variants: 2, ppm: 60 },
-  pad: { w: 1, h: 0.4, variants: 8, ppm: 96 },
-  bloom: { w: 0.4, h: 0.3, variants: 4, ppm: 160 },
+  pad: { w: 1, h: 0.4, variants: 8, ppm: 144 },
+  bloom: { w: 0.55, h: 0.4, variants: 6, ppm: 160 },
+  canopy: { w: 6, h: 5.4, variants: 4, ppm: 44 },
+  boat: { w: 3.4, h: 1.2, variants: 3, ppm: 64 },
+  lantern: { w: 0.9, h: 1.7, variants: 3, ppm: 90 },
 };
 
 export const CARD_KINDS = Object.keys(CARDS) as CardKind[];
@@ -62,7 +66,8 @@ interface CardCtx { ctx: Ctx; rng: Rng; g: Garden; s: Series; w: number; h: numb
  * `light` how lit it is. Points near the edge are kept by chance, which leaves a ragged outline.
  */
 function mass(c: CardCtx, sp: number, size: number, inside: (x: number, y: number) => number,
-  light: (x: number, y: number) => number, lean: (x: number, y: number) => number, ramp0: readonly RGB[] = c.s.foliage) {
+  light: (x: number, y: number) => number, lean: (x: number, y: number) => number, ramp0: readonly RGB[] = c.s.foliage,
+  kind?: (x: number, y: number) => number) {
   const { ctx, rng, w, h } = c;
   for (let pass = 0; pass < 2; pass++) {
     const step = pass ? sp * 0.6 : sp, sz = pass ? size * 0.6 : size;
@@ -74,7 +79,13 @@ function mass(c: CardCtx, sp: number, size: number, inside: (x: number, y: numbe
         if (Math.min(px, w - px, py) < sz * 0.75) continue;
         if (pass && !rng.chance(0.55)) continue;
         const l = light(px, py) + rng.range(-0.12, 0.12) + (pass ? 0.12 : -0.05);
-        touch(ctx, rng, px, py, sz * rng.range(0.7, 1.3), sz * rng.range(0.35, 0.55), lean(px, py) + rng.range(-0.4, 0.4), ramp(ramp0, l), 0.9);
+        if (kind) {
+          // Each planting has its own brushwork: hanging willow, mottled dark shrub, pale feathery bush.
+          const t = plantTouch(c.s, kind(px, py), rng, sz, l, 0.1, lean(px, py) - Math.PI / 2, 0.55);
+          touch(ctx, rng, px, py, t.len, t.wide, t.ang, t.col, 0.9);
+        } else {
+          touch(ctx, rng, px, py, sz * rng.range(0.7, 1.3), sz * rng.range(0.35, 0.55), lean(px, py) + rng.range(-0.4, 0.4), ramp(ramp0, l), 0.9);
+        }
       }
     }
   }
@@ -92,10 +103,12 @@ function blob(c: CardCtx, cx: number, cy: number, rx: number, ry: number, rough 
 const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
   shrub(c) {
     const { w, h, g } = c, inside = blob(c, w / 2, h * 0.56, w * 0.47, h * 0.46);
-    mass(c, 0.16, 0.36, (x, y) => Math.min(inside(x, y), (h - y) * 4),
+    // Some shrubs are dark and mottled, some pale and feathery, as the far bank is in Monet's.
+    const k = c.v % 5 === 1 || c.v % 5 === 3 ? 2 : 1;
+    mass(c, 0.1, 0.22, (x, y) => Math.min(inside(x, y), (h - y) * 4),
       (x, y) => 0.75 - (y / h) * 0.6 - (x / w) * 0.15 + g.noise.noise2(x * 1.3 + c.v * 5, y * 1.3) * 0.3,
-      (x, y) => Math.PI / 2 + g.noise.noise2(x, y + 7) * 0.8);
-    if (c.rng.chance(0.4)) blossoms(c, inside, c.rng.pick(c.s.flower));
+      (x, y) => Math.PI / 2 + g.noise.noise2(x, y + 7) * 0.8, c.s.foliage, () => k);
+    if (c.rng.chance(k === 2 ? 0.6 : 0.4)) blossoms(c, inside, c.rng.pick(c.s.flower));
   },
 
   willow(c) {
@@ -105,7 +118,7 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
     dabLine(ctx, rng, trunk, 0.32, mix(s.reed[0], [70, 50, 40], 0.5), 0.95, 0.3);
     const crown = blob(c, w / 2 + lean, h * 0.27, w * 0.4, h * 0.24, 0.25);
     const light = (x: number, y: number) => 0.85 - (y / h) * 0.55 + g.noise.noise2(x * 0.7 + c.v * 3, y * 0.7) * 0.35;
-    mass(c, 0.3, 0.55, crown, light, (x, y) => Math.PI / 2 + g.noise.noise2(x * 0.5, y * 0.5) * 0.6);
+    mass(c, 0.24, 0.45, crown, light, (x, y) => Math.PI / 2 + g.noise.noise2(x * 0.5, y * 0.5) * 0.6, s.foliage, () => 0);
     // The curtain: fronds falling from under the crown almost to the water.
     const n = Math.round(w * 9);
     for (let i = 0; i < n; i++) {
@@ -113,16 +126,96 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
       const top = h * (0.18 + (1 - edge) * 0.3) + rng.range(0, 0.6), bottom = h * rng.range(0.82, 0.99);
       const sway = rng.range(-0.3, 0.3), pts: Pt[] = [];
       for (let t = 0; t <= 1.0001; t += 0.1) pts.push([x + sway * t * t + Math.sin(t * 7 + i) * 0.06, lerp(top, bottom, t)]);
-      dabLine(c.ctx, rng, pts, rng.range(0.1, 0.2), ramp(s.foliage, light(x, (top + bottom) / 2) + rng.range(-0.1, 0.3)), 0.8, 0.22);
+      const base = ramp(s.foliage, light(x, (top + bottom) / 2) + rng.range(-0.1, 0.3));
+      dabLine(c.ctx, rng, pts, rng.range(0.07, 0.15), rng.chance(0.25) ? mix(s.accent[4], base, 0.45) : base, 0.8, 0.2);
     }
   },
 
   poplar(c) {
     const { w, h, g } = c, inside = blob(c, w / 2, h * 0.47, w * 0.4, h * 0.46, 0.12);
     dabLine(c.ctx, c.rng, [[w / 2, h], [w / 2, h * 0.75]], 0.25, mix(c.s.reed[0], [60, 44, 36], 0.5), 0.95, 0.25);
-    mass(c, 0.24, 0.5, (x, y) => Math.min(inside(x, y), (h * 0.95 - y)),
+    mass(c, 0.2, 0.4, (x, y) => Math.min(inside(x, y), (h * 0.95 - y)),
       (x, y) => 0.8 - (y / h) * 0.45 - (x / w) * 0.25 + g.noise.noise2(x + c.v * 9, y * 0.5) * 0.3,
-      () => Math.PI / 2 + c.rng.range(-0.2, 0.2));
+      () => Math.PI / 2 + c.rng.range(-0.2, 0.2), c.s.foliage, () => 1);
+  },
+
+  boat(c) {
+    // A rowboat tied up at the bank, riding low, with its oars shipped. Its variants differ in paint.
+    const { ctx, rng, w, h, s } = c;
+    const paints: RGB[] = [[34, 62, 54], [52, 74, 112], [96, 70, 52]], paint = paints[c.v % 3];
+    const hull = mix(ramp(s.bridge, 0.3), paint, 0.55), plank = mix([214, 196, 156], s.air, 0.25), rail = ramp(s.bridge, 0.88);
+    const top = (u: number) => h * (0.56 - 0.3 * Math.pow(2 * u - 1, 2)), bot = (u: number) => h * (0.95 - 0.58 * Math.pow(2 * u - 1, 4));
+    for (let x = 0.12; x < w - 0.1; x += 0.1) {
+      const u = x / w, a = Math.atan2(top(u + 0.02) - top(u - 0.02), 0.04 * w);
+      for (let y = top(u); y < bot(u); y += 0.075) {
+        const t = (y - top(u)) / Math.max(0.05, bot(u) - top(u));
+        touch(ctx, rng, x + rng.range(-0.03, 0.03), y, 0.2, 0.09, a + rng.range(-0.08, 0.08), mix(ramp(s.bridge, 0.5 - t * 0.35), hull, 0.5 + t * 0.4 + rng.range(-0.1, 0.1)), 0.95);
+      }
+      flat(ctx, rng, x, top(u), 0.18, 0.045, a, rail, 0.9);
+    }
+    // The planking inside, a seat across, and a pair of oars laid over the side.
+    flat(ctx, rng, w * 0.5, top(0.5) + 0.04, w * 0.5, 0.05, 0, plank, 0.9);
+    flat(ctx, rng, w * 0.47, top(0.47) + 0.02, 0.06, 0.14, 0, mix(plank, hull, 0.4), 0.9);
+    for (const [u0, u1] of [[0.18, 0.78], [0.26, 0.84]]) {
+      dabLine(ctx, rng, [[w * u0, top(u0) - 0.28], [w * u1, top(u1) - 0.04]], 0.035, mix([166, 134, 96], hull, 0.2), 0.95, 0.1);
+    }
+  },
+
+  lantern(c) {
+    // A stone lantern, as stands at the water's edge in a Japanese garden: pedestal, shaft, a little
+    // lit chamber and a wide hat of a roof, mossy where the damp reaches it.
+    const { ctx, rng, w, h, s } = c, cx = w / 2, stone = mix([156, 154, 146], s.air, 0.3), moss = ramp(s.reed, 0.55);
+    const block = (y0: number, y1: number, hw: number) => {
+      for (let y = y0; y < y1; y += 0.05) {
+        const col = mix(stone, rng.chance(0.16) ? moss : [255, 255, 255], rng.range(0, 0.2));
+        touch(ctx, rng, cx - hw * 0.5, y, hw * 1.15, 0.07, rng.range(-0.04, 0.04), mix(col, [255, 255, 255], 0.12), 0.95);
+        touch(ctx, rng, cx + hw * 0.5, y, hw * 1.15, 0.07, rng.range(-0.04, 0.04), mix(col, s.accent[0], 0.22), 0.95);
+      }
+    };
+    block(h - 0.28, h, 0.3);
+    block(h - 0.72, h - 0.28, 0.1);
+    block(h - 0.82, h - 0.72, 0.26);
+    // The chamber, lit from within.
+    block(h - 1.18, h - 0.82, 0.17);
+    const glow = ctx.createRadialGradient(cx, h - 1, 0, cx, h - 1, 0.5);
+    glow.addColorStop(0, 'rgba(255, 214, 130, 0.5)');
+    glow.addColorStop(1, 'rgba(255, 214, 130, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - 0.5, h - 1.5, 1, 1);
+    dab(ctx, cx, h - 1, 0.1, 0.16, Math.PI / 2, [255, 222, 140], 0.95);
+    // The roof, broad at the eaves and narrowing to a knob.
+    for (let y = h - 1.42; y < h - 1.18; y += 0.045) block(y, y + 0.045, 0.1 + (y - (h - 1.42)) * 1.25);
+    dab(ctx, cx, h - 1.47, 0.09, 0.09, 0, stone, 0.95);
+    for (let i = 0; i < 6; i++) dab(ctx, cx + rng.range(-0.28, 0.28), h - rng.range(0.02, 0.2), rng.range(0.06, 0.14), 0.045, rng.range(-0.3, 0.3), moss, 0.8);
+  },
+
+  canopy(c) {
+    // Branches arching over the water: leaves all the way up, fronds hanging from the underside.
+    // Stood high above the water, so rowing under them is rowing under the garden. The top of the
+    // card dissolves into nothing, so it never shows an edge floating in front of what is behind.
+    const { ctx, rng, w, h, g, s } = c, k = c.v % 2 === 0 ? 0 : 2, hang = 2.6;
+    const edge = (x: number) => h - hang + 0.6 * g.noise.noise2(x * 0.9 + c.v * 11, 3.1);
+    mass(c, 0.11, 0.26, (x, y) => Math.min((edge(x) - y) / 0.5, (Math.min(x, w - x) - 0.5 - 0.5 * (0.5 + 0.5 * g.noise.noise2(y * 1.1 + c.v * 3, 5.5))) / 0.8),
+      (x, y) => 0.7 - (y / h) * 0.3 + g.noise.noise2(x * 1.2 + c.v * 5, y * 1.2) * 0.3,
+      (x, y) => Math.PI / 2 + g.noise.noise2(x, y + 7) * 0.6, s.foliage, () => k);
+    const n = Math.round(w * 8);
+    for (let i = 0; i < n; i++) {
+      const x = w * (0.05 + (0.9 * (i + rng.random())) / n), top = edge(x) - 0.12;
+      const bottom = Math.min(h * 0.99, top + rng.range(0.6, hang * 0.95) * (rng.chance(0.2) ? 1.3 : 1));
+      if (bottom - top < 0.2 || rng.chance(0.25)) continue;
+      const sway = rng.range(-0.2, 0.2), pts: Pt[] = [];
+      for (let t = 0; t <= 1.0001; t += 0.125) pts.push([x + sway * t * t + Math.sin(t * 6 + i) * 0.04, lerp(top, bottom, t)]);
+      const base = ramp(s.foliage, 0.55 + rng.range(-0.2, 0.3));
+      dabLine(ctx, rng, pts, rng.range(0.06, 0.13), rng.chance(0.2) ? mix(s.accent[4], base, 0.45) : base, 0.85, 0.2);
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    const fade = ctx.createLinearGradient(0, 0, 0, h * 0.6);
+    fade.addColorStop(0, 'rgba(0,0,0,1)');
+    fade.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, 0, w, h * 0.6);
+    ctx.restore();
   },
 
   backdrop(c) {
@@ -130,9 +223,10 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
     // A long, rolling wall of distant trees with a flat foot on the far water.
     const top = (x: number) => h * (0.12 + 0.3 * (0.5 + 0.5 * g.noise.fbm(x / 4 + c.v * 31, 3.3, 3)));
     const fade = (x: number) => Math.min(x, w - x) / 1.5;
-    mass(c, 0.42, 0.9, (x, y) => Math.min((y - top(x)) / 2, fade(x), (h - y) * 2),
+    mass(c, 0.34, 0.7, (x, y) => Math.min((y - top(x)) / 2, fade(x), (h - y) * 2),
       (x, y) => 0.7 - ((y - top(x)) / h) * 0.7 + g.noise.noise2(x / 2 + c.v, y / 2) * 0.35,
-      (x, y) => Math.PI / 2 + g.noise.noise2(x / 3, y / 3) * 0.9);
+      (x, y) => Math.PI / 2 + g.noise.noise2(x / 3, y / 3) * 0.9, c.s.foliage,
+      (x) => { const n = g.noise.noise2(x / 5 + c.v * 17, 9); return n > 0.15 ? 2 : n < -0.2 ? 0 : 1; });
   },
 
   reeds(c) {
@@ -168,30 +262,37 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
     const { ctx, rng, w, h, s } = c, deck = (x: number) => BRIDGE.deckY(x, w, h);
     const thick = BRIDGE.thick * h, railH = BRIDGE.railH * h;
     const shade = mix(ramp(s.bridge, 0.15), s.accent[0], 0.35), warm = mix(ramp(s.bridge, 0.92), s.accent[3], 0.35);
-    // Piles standing in the water under the ends and the middle of the span.
-    for (const u of [0.1, 0.22, 0.42, 0.58, 0.78, 0.9]) {
-      const x = w * u + rng.range(-0.08, 0.08);
-      dabLine(ctx, rng, [[x, h + 0.1], [x + rng.range(-0.04, 0.04), deck(x) + thick]], 0.2, mix(shade, ramp(s.bridge, 0.25), 0.5), 0.95, 0.2);
+    const underline = darken(mix(ramp(s.bridge, 0.15), s.accent[0], 0.4), 0.1);
+    // Short piles where the span meets the banks; the arch itself carries the middle.
+    for (const u of [0.07, 0.93]) {
+      const x = w * u + rng.range(-0.05, 0.05);
+      dabLine(ctx, rng, [[x, h + 0.1], [x + rng.range(-0.03, 0.03), deck(x) + thick]], 0.15, darken(mix(shade, ramp(s.bridge, 0.25), 0.4), 0.1), 0.95, 0.2);
     }
     const slope = (x: number) => Math.atan2(deck(x + 0.05) - deck(x - 0.05), 0.1);
     for (let x = 0.1; x < w - 0.1; x += 0.13) {
       const y = deck(x), a = slope(x);
-      // The deck: violet shade beneath, the bridge's own green, warm light along the top.
+      // The deck: a rust-violet line beneath, the bridge's own green in broken strokes, warm light along the top.
+      flat(ctx, rng, x, y + thick * 1.08, rng.range(0.2, 0.3), 0.035, a, mix(s.accent[2], darken(shade, 0.3), 0.55), 0.8);
       for (const t of [0.85, 0.5, 0.15]) {
-        const col = t > 0.6 ? mix(shade, ramp(s.bridge, 0.3), rng.random()) : ramp(s.bridge, (1 - t) * 0.8 + rng.range(-0.1, 0.1));
-        touch(ctx, rng, x, y + thick * t, rng.range(0.24, 0.36), thick * rng.range(0.4, 0.55), a + rng.range(-0.07, 0.07), col, 0.95);
+        const col = t > 0.6 ? mix(shade, ramp(s.bridge, 0.3), rng.random()) : ramp(s.bridge, (1 - t) * 0.6 + rng.range(-0.15, 0.1));
+        touch(ctx, rng, x, y + thick * t, rng.range(0.24, 0.36), thick * rng.range(0.4, 0.55), a + rng.range(-0.07, 0.07), rng.chance(0.12) ? mix(s.accent[4], col, 0.5) : col, 0.95);
       }
       if (rng.chance(0.5)) flat(ctx, rng, x, y - 0.02, rng.range(0.12, 0.24), 0.04, a, warm, 0.85);
+      // Rails: chalky lavender-white laid thick, the top one greener, a dark line beneath each.
       for (let r = 1; r <= 2; r++) {
         if (rng.chance(0.08)) continue;
-        touch(ctx, rng, x, y - (railH * r) / 2 + rng.range(-0.015, 0.015), rng.range(0.22, 0.32), rng.range(0.1, 0.14), a + rng.range(-0.06, 0.06), ramp(s.bridge, 0.5 + rng.range(-0.15, 0.12)), 0.95);
+        const ry = y - (railH * r) / 2 + rng.range(-0.015, 0.015);
+        const chalk = mix(ramp(s.bridge, rng.range(0.8, 1)), s.accent[rng.chance(0.5) ? 0 : 1], rng.range(0.12, 0.34));
+        flat(ctx, rng, x + rng.range(-0.03, 0.03), ry + 0.055, rng.range(0.22, 0.32), 0.032, a, underline, 0.7);
+        touch(ctx, rng, x, ry, rng.range(0.22, 0.32), rng.range(0.12, 0.17), a + rng.range(-0.06, 0.06), r === 2 ? mix(ramp(s.bridge, rng.range(0.4, 0.6)), chalk, 0.35) : chalk, 0.95);
+        if (rng.chance(0.7)) touch(ctx, rng, x + rng.range(-0.06, 0.06), ry - 0.035, rng.range(0.1, 0.18), 0.045, a, rng.chance(0.35) ? warm : lighten(chalk, 0.12), 0.8);
       }
-      if (rng.chance(0.55)) flat(ctx, rng, x, y - railH - 0.05, rng.range(0.12, 0.22), 0.04, a, rng.chance(0.4) ? warm : ramp(s.bridge, 0.95), 0.8);
     }
     for (let x = 0.35; x < w - 0.3; x += 0.75) {
-      const y = deck(x), lean = rng.range(-0.03, 0.03);
-      dabLine(ctx, rng, [[x, y + 0.02], [x + lean, y - railH - 0.08]], 0.14, ramp(s.bridge, rng.range(0.32, 0.5)), 0.95, 0.15);
-      dabLine(ctx, rng, [[x - 0.05, y], [x - 0.05 + lean, y - railH]], 0.035, ramp(s.bridge, 0.9), 0.55, 0.16);
+      const y = deck(x), lean = rng.range(-0.03, 0.03), col = mix(ramp(s.bridge, rng.range(0.55, 0.8)), s.accent[0], 0.2);
+      dabLine(ctx, rng, [[x + 0.04, y + 0.02], [x + 0.04 + lean, y - railH - 0.08]], 0.08, darken(mix(col, s.accent[0], 0.45), 0.05), 0.8, 0.14);
+      dabLine(ctx, rng, [[x, y + 0.02], [x + lean, y - railH - 0.08]], 0.16, col, 0.95, 0.15);
+      dabLine(ctx, rng, [[x - 0.05, y], [x - 0.05 + lean, y - railH]], 0.04, lighten(ramp(s.bridge, 0.95), 0.04), 0.65, 0.14);
     }
   },
 
@@ -200,18 +301,24 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
     // little more for depth. Drawn in easel units (a hundred to the metre) so the strokes match.
     const { ctx, rng, s, v } = c;
     ctx.scale(0.01, 0.01);
-    drawPad(ctx, rng, { x: 50, y: 20, w: 90, h: 32, rot: 0, tone: (v + 0.5) / CARDS.pad.variants, notch: rng.range(-2.6, -0.5), flower: -1, key: 0 }, s);
+    drawPad(ctx, rng, { x: 50, y: 20, w: 90, h: 32, rot: 0, tone: (v + 0.5) / CARDS.pad.variants, notch: rng.range(-2.6, -0.5), flower: -1, key: 0 }, s, true);
   },
 
   bloom(c) {
-    // A water lily seen from the side, standing on its pad.
-    const { ctx, rng, w, h, s } = c, col = s.flower[c.v % s.flower.length];
-    for (let i = 0; i < 9; i++) {
-      const a = -Math.PI / 2 + rng.range(-1.35, 1.35), r = rng.range(0.03, 0.08);
-      dab(ctx, w / 2 + Math.cos(a) * r * 1.6, h * 0.62 + Math.sin(a) * r, rng.range(0.1, 0.15), 0.05, a, mix(col, [255, 255, 255], i < 4 ? 0 : 0.3), 0.95);
-    }
-    dab(ctx, w / 2, h * 0.58, 0.06, 0.04, 0, [244, 214, 110], 0.95);
-    dab(ctx, w / 2, h * 0.88, 0.3, 0.05, 0, ramp(s.pad, 0.4), 0.8);
+    // Water lilies seen from the side, standing on their pad: a main bloom, often with smaller ones beside it.
+    const { ctx, rng, w, h, s } = c, col = s.flower[[0, 1, 0, 2, 4, 1][c.v % 6] % s.flower.length];
+    dab(ctx, w / 2, h * 0.9, w * 0.8, h * 0.14, 0, ramp(s.pad, 0.4), 0.8);
+    const flower = (cx: number, cy: number, f: number, tint: RGB) => {
+      dab(ctx, cx, cy + f * 0.3, f * 1.8, f * 0.5, 0, mix(tint, s.accent[0], 0.3), 0.5);
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + rng.range(-1.45, 1.45);
+        dab(ctx, cx + Math.cos(a) * f * 0.5, cy + Math.sin(a) * f * 0.4, f * rng.range(1.1, 1.6), f * rng.range(0.5, 0.7), a, mix(tint, [255, 255, 255], i < 4 ? 0 : rng.range(0.1, 0.35)), 0.95);
+      }
+      dab(ctx, cx, cy - f * 0.05, f * 0.45, f * 0.32, 0, [244, 214, 110], 0.95);
+    };
+    flower(w / 2, h * 0.62, 0.085, col);
+    if (rng.chance(0.7)) flower(w * rng.range(0.2, 0.32), h * 0.74, 0.055, s.flower[rng.chance(0.5) ? 0 : 1]);
+    if (rng.chance(0.55)) flower(w * rng.range(0.68, 0.8), h * 0.72, 0.06, col);
   },
 
   grass(c) {
@@ -233,7 +340,7 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
       (x, y) => Math.PI / 2 + g.noise.noise2(x * 2, y * 2 + 3) * 1.2);
     const hues: RGB[] = [s.flower[2], s.accent[1], s.accent[3], s.flower[0], s.flower[3], s.accent[2]];
     const a = hues[v % hues.length], b = hues[(v + 2) % hues.length];
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 260; i++) {
       const x = rng.random() * w, y = rng.random() * h;
       if (inside(x, y) < 0.05 || y > h * 0.92) continue;
       const col = mix(rng.chance(0.75) ? a : b, [255, 255, 255], rng.range(0, 0.35));

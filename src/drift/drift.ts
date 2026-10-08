@@ -15,7 +15,7 @@ export class Drift {
   readonly life: DriftLife;
   private renderer: DriftRenderer;
   private keys = new Set<string>();
-  private pointer = { look: 0, steer: 0, row: 0 };
+  private pointer = { look: 0, steer: 0, row: 0, pitch: 0 };
   paused = false;
 
   constructor(readonly g: Garden, private pool: PaintPool) {
@@ -50,7 +50,7 @@ export class Drift {
     const k = this.keys, has = (...c: string[]) => c.some((x) => k.has(x));
     const row = (has('KeyW', 'ArrowUp') ? 1 : 0) - (has('KeyS', 'ArrowDown') ? 1 : 0) || this.pointer.row;
     const steer = (has('KeyD', 'ArrowRight') ? 1 : 0) - (has('KeyA', 'ArrowLeft') ? 1 : 0) || this.pointer.steer;
-    return { row, steer, look: this.pointer.look };
+    return { row, steer, look: this.pointer.look, pitch: this.pointer.pitch };
   }
 
   update(dt: number) {
@@ -62,7 +62,7 @@ export class Drift {
   }
 
   draw(ctx: CanvasRenderingContext2D, t: number, w: number, h: number) {
-    this.renderer.draw(ctx, this.boat, t, w, h, (v) => this.life.draw(ctx, v, t));
+    this.renderer.draw(ctx, this.boat, t, w, h, (v) => this.life.draw(ctx, v, t), (c, v) => this.life.drawSky(c, v, t));
   }
 
   key(code: string, down: boolean) {
@@ -75,9 +75,10 @@ export class Drift {
     this.pointer.row = this.pointer.steer = 0;
   }
 
-  /** Pointer position over the view, -1..1 on each axis: the eye follows it. */
-  look(nx: number) {
+  /** Pointer position over the view, -1..1 on each axis: the eye follows it (up looks up). */
+  look(nx: number, ny = 0) {
     this.pointer.look = Math.max(-1, Math.min(1, nx));
+    this.pointer.pitch = Math.max(-1, Math.min(1, -ny));
   }
 
   /** Touch: hold to row, drag sideways to steer. */
