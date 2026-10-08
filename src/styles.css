@@ -22,7 +22,6 @@
   --display: 'Fraunces', Georgia, serif;
   --ui: 'Karla', system-ui, sans-serif;
   --hand: 'Kalam', 'Segoe Print', cursive;
-  --sign: 'Reenie Beanie', 'Segoe Print', cursive;
   --pw: 600px;
   --ph: 525px;
   color-scheme: light;
@@ -178,40 +177,6 @@ button { font: inherit; color: inherit; }
 .painting .wet { opacity: 1; }
 @keyframes sheen { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
-.signature {
-  position: absolute;
-  right: 3%;
-  bottom: 2.2%;
-  display: flex;
-  align-items: baseline;
-  gap: 0.3em;
-  font-family: var(--sign);
-  font-size: clamp(14px, calc(var(--pw) * 0.034), 30px);
-  line-height: 1;
-  color: #6e2a22;
-  mix-blend-mode: multiply;
-  transform: rotate(-1.6deg);
-  transform-origin: right bottom;
-  cursor: text;
-  opacity: 0.8;
-  transition: opacity 0.3s;
-}
-.signature:hover, .signature:focus-within { opacity: 1; }
-.sig-seed {
-  width: calc(var(--len, 4) * 0.52em + 0.3em);
-  min-width: 1.4em;
-  max-width: 9em;
-  padding: 0 0.1em;
-  border: 0;
-  border-bottom: 1px dashed transparent;
-  background: transparent;
-  font: inherit;
-  color: inherit;
-  text-shadow: inherit;
-  outline: none;
-}
-.sig-seed:hover, .sig-seed:focus { border-bottom-color: rgba(110, 42, 34, 0.5); }
-
 /* A paper tag tied to the easel's leg: the series and how far the painting has got. */
 .tag {
   position: absolute;
@@ -239,6 +204,20 @@ button { font: inherit; color: inherit; }
   box-shadow: inset 0 1px 2px rgba(var(--shadow), 0.3);
 }
 .tag-series { font-family: var(--display); font-style: italic; font-size: 16px; }
+.tag-seed { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; font-family: var(--hand); font-size: 14px; color: var(--ink-soft); cursor: text; }
+.tag-seed input {
+  width: calc(var(--len, 4) * 0.62em + 0.6em);
+  min-width: 3.4em;
+  max-width: 9em;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px dashed var(--ink-faint);
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+.tag-seed input:hover, .tag-seed input:focus { border-bottom-color: var(--ink-soft); }
 .tag-state { font-family: var(--hand); font-size: 14px; color: var(--ink-soft); }
 
 /* The painting is a door: it invites a click once it is finished. */

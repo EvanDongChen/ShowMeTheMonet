@@ -1,5 +1,5 @@
 // A postcard of whatever is on the canvas or in the boat: the picture set in a paper border with a
-// handwritten caption (which series, where, at what hour) and the signature. This is page code, not
+// handwritten caption (which series, where, at what hour) and the seed. This is page code, not
 // painting code: it only frames a picture that has already been painted, and its paper grain is
 // seeded so the same postcard always comes out the same.
 import { Rng, hashString } from './core/rng';
@@ -19,7 +19,6 @@ export async function makePostcard(src: HTMLCanvasElement, info: PostcardInfo): 
       Promise.all([
         document.fonts.load("italic 48px 'Fraunces'"),
         document.fonts.load("32px 'Kalam'"),
-        document.fonts.load("48px 'Reenie Beanie'"),
       ]),
       new Promise((r) => setTimeout(r, 1500)),
     ]);
@@ -53,7 +52,7 @@ export async function makePostcard(src: HTMLCanvasElement, info: PostcardInfo): 
   c.lineWidth = Math.max(1, m * 0.02);
   c.strokeRect(m - 0.5, m - 0.5, w + 1, h + 1);
 
-  // The caption, left; the signature, right.
+  // The caption, left; the name and the seed, right.
   const base = h + m + cap * 0.52, titleSize = Math.round(cap * 0.36), lineSize = Math.round(cap * 0.25);
   c.fillStyle = '#2f3b33';
   c.textBaseline = 'alphabetic';
@@ -71,13 +70,12 @@ export async function makePostcard(src: HTMLCanvasElement, info: PostcardInfo): 
   }
   c.fillText(info.line, m, base + lineSize * 1.45);
 
-  c.save();
-  c.translate(out.width - m, base + lineSize * 1.1);
-  c.rotate(-0.03);
   c.textAlign = 'right';
-  c.fillStyle = 'rgba(110, 42, 34, 0.88)';
-  c.font = `${Math.round(cap * 0.5)}px 'Reenie Beanie', 'Segoe Print', cursive`;
-  c.fillText(`Claude Monet ${info.seed}`, 0, 0);
-  c.restore();
+  c.fillStyle = 'rgba(47, 59, 51, 0.82)';
+  c.font = `italic 300 ${Math.round(cap * 0.3)}px 'Fraunces', Georgia, serif`;
+  c.fillText('Show Me the Monet', out.width - m, base);
+  c.fillStyle = 'rgba(47, 59, 51, 0.6)';
+  c.font = `${lineSize}px 'Kalam', 'Segoe Print', cursive`;
+  c.fillText(`seed ${info.seed}`, out.width - m, base + lineSize * 1.45);
   return out;
 }

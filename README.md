@@ -19,11 +19,11 @@ Plain TypeScript, Vite and canvas 2D, with no runtime dependencies. The build is
 | --- | --- | --- |
 | Palette | new canvas, **choose the light**, **drift in**, ripple, make a postcard, share, about | to the easel, rest the oars, postcard |
 | Keys | `N` new · `D` drift in · `A` animate · `L` change the light · `S` postcard · `C` copy link · `I` about | `W`/`↑` row · `S`/`↓` back-paddle · `A` `D` steer · `Space` rest · `M` sound · `P` postcard · `Esc` step out |
-| Pointer | click the signature to type a seed | the eye follows the mouse, left and right and up (into the canopy) and down (at the water); on touch, hold to row and drag to steer |
+| Pointer | click the painting to step in; type a seed on the tag under the easel | the eye follows the mouse, left and right and up (into the canopy) and down (at the water); on touch, hold to row and drag to steer |
 
 URL parameters: `?seed=…`, `&light=green|rose|mist|evening|autumn` to choose the series, `&mode=drift` to start in the boat, `&animate=0` to keep the easel still.
 
-**Choosing the light** repaints the same seed in another series (the composition stays, the palette and air change), and the choice travels in the link. **Postcards** frame the finished canvas, or the view from the boat, in a paper border with a handwritten caption (the series, the reach rowed and the hour) and the signature. In the boat, a title card names the place as you slip in, and landmarks are whispered as they come into view.
+**Choosing the light** repaints the same seed in another series (the composition stays, the palette and air change), and the choice travels in the link. **Postcards** frame the finished canvas, or the view from the boat, in a paper border with a handwritten caption (the series, the reach rowed and the hour) and the seed. In the boat, a title card names the place as you slip in, and landmarks are whispered as they come into view.
 
 ## How it works
 

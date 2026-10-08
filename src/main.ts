@@ -80,8 +80,8 @@ function progress() {
   $('invite').classList.toggle('show', invite);
   $('btn-drift').classList.toggle('pulse', invite);
   state.textContent = finished
-    ? (garden.classic ? 'after Monet, 1899' : `canvas no. ${seed}`)
-    : p < 0.25 ? 'laying in the first touches…' : p < 0.6 ? 'working the water…' : p < 0.9 ? 'placing the lilies…' : 'signing it…';
+    ? (garden.classic ? 'after Monet, 1899' : 'a canvas of your own')
+    : p < 0.25 ? 'laying in the first touches…' : p < 0.6 ? 'working the water…' : p < 0.9 ? 'placing the lilies…' : 'the last touches…';
 }
 
 /** Fit the canvas on the easel, and repaint it if the size it needs has changed. */
@@ -343,8 +343,8 @@ $('about-classic').onclick = () => {
   $<HTMLDialogElement>('about').close();
   setSeed(CLASSIC_SEED);
 };
-canvasFig.addEventListener('click', (e) => {
-  if (mode === 'easel' && finished && !(e.target as HTMLElement).closest('.signature')) enterDrift();
+canvasFig.addEventListener('click', () => {
+  if (mode === 'easel' && finished) enterDrift();
 });
 addEventListener('pointerdown', (e) => {
   if (!(e.target as HTMLElement).closest('.palette')) toggleLights(false);
