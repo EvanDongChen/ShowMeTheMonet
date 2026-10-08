@@ -201,11 +201,14 @@ async function savePicture() {
   const ctx = out.getContext('2d')!;
   ctx.drawImage(picture, 0, 0);
   // The signature is set in a web font, so it is drawn here on the page rather than in a worker.
-  const size = Math.round(out.width * 0.045);
-  ctx.font = `${size}px 'Mrs Saint Delafield', cursive`;
-  ctx.fillStyle = 'rgba(142, 59, 63, 0.9)';
+  const size = Math.round(out.width * 0.034);
+  ctx.font = `${size}px 'Reenie Beanie', cursive`;
+  ctx.fillStyle = 'rgba(110, 42, 34, 0.85)';
   ctx.textAlign = 'right';
-  ctx.fillText(`Claude Monet ${seed}`, out.width * 0.965, out.height * 0.968);
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.translate(out.width * 0.97, out.height * 0.972);
+  ctx.rotate(-0.028);
+  ctx.fillText(`Claude Monet ${seed}`, 0, 0);
   download(out, `monet-${seed}.png`);
 }
 

@@ -22,7 +22,7 @@
   --display: 'Fraunces', Georgia, serif;
   --ui: 'Karla', system-ui, sans-serif;
   --hand: 'Kalam', 'Segoe Print', cursive;
-  --sign: 'Mrs Saint Delafield', 'Brush Script MT', cursive;
+  --sign: 'Reenie Beanie', 'Segoe Print', cursive;
   --pw: 600px;
   --ph: 525px;
   color-scheme: light;
@@ -178,19 +178,20 @@ button { font: inherit; color: inherit; }
 
 .signature {
   position: absolute;
-  right: 3.5%;
-  bottom: 2.6%;
+  right: 3%;
+  bottom: 2.2%;
   display: flex;
   align-items: baseline;
-  gap: 0.35em;
+  gap: 0.3em;
   font-family: var(--sign);
-  font-size: clamp(20px, calc(var(--pw) * 0.045), 40px);
+  font-size: clamp(14px, calc(var(--pw) * 0.034), 30px);
   line-height: 1;
-  color: #9a2a30;
-  -webkit-text-stroke: 0.4px #9a2a30;
-  text-shadow: 0 0 6px rgba(251, 248, 241, 0.35);
+  color: #6e2a22;
+  mix-blend-mode: multiply;
+  transform: rotate(-1.6deg);
+  transform-origin: right bottom;
   cursor: text;
-  opacity: 0.92;
+  opacity: 0.8;
   transition: opacity 0.3s;
 }
 .signature:hover, .signature:focus-within { opacity: 1; }
@@ -207,7 +208,7 @@ button { font: inherit; color: inherit; }
   text-shadow: inherit;
   outline: none;
 }
-.sig-seed:hover, .sig-seed:focus { border-bottom-color: rgba(142, 59, 63, 0.5); }
+.sig-seed:hover, .sig-seed:focus { border-bottom-color: rgba(110, 42, 34, 0.5); }
 
 /* A paper tag tied to the easel's leg: the series and how far the painting has got. */
 .tag {
