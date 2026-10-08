@@ -11,6 +11,7 @@ import type { RGB } from '../core/color';
 
 /** Canvas size in painting units. */
 export const W = 1200, H = 1050;
+const BUCKET = 24;
 
 export interface Bridge {
   cx: number; span: number;
@@ -40,6 +41,8 @@ export class Garden {
   readonly reedL: number; readonly reedR: number;
   readonly rafts: RaftNote[];
   readonly pads: Pad[];
+  /** Pads bucketed on a coarse grid, to ask quickly whether a spot of water is open. */
+  private padGrid = new Map<number, Pad[]>();
 
   constructor(readonly seed: string) {
     this.s = hashString(seed);
@@ -74,6 +77,26 @@ export class Garden {
       this.rafts = this.randomRafts(this.rng(0x4af7));
     }
     this.pads = this.layPads();
+    for (const pad of this.pads) {
+      for (let bx = Math.floor((pad.x - pad.w / 2) / BUCKET); bx <= Math.floor((pad.x + pad.w / 2) / BUCKET); bx++) {
+        for (let by = Math.floor((pad.y - pad.h / 2) / BUCKET); by <= Math.floor((pad.y + pad.h / 2) / BUCKET); by++) {
+          const k = bx * 4096 + by, list = this.padGrid.get(k);
+          if (list) list.push(pad);
+          else this.padGrid.set(k, [pad]);
+        }
+      }
+    }
+  }
+
+  /** Is (x, y) under a lily pad (within `shrink` of its outline)? */
+  covered(x: number, y: number, shrink = 0.85) {
+    const list = this.padGrid.get(Math.floor(x / BUCKET) * 4096 + Math.floor(y / BUCKET));
+    if (!list) return false;
+    for (const p of list) {
+      const dx = (x - p.x) / (p.w * 0.5 * shrink), dy = (y - p.y) / (p.h * 0.5 * shrink);
+      if (dx * dx + dy * dy < 1) return true;
+    }
+    return false;
   }
 
   rng(...k: number[]) {

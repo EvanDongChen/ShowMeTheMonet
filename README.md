@@ -60,7 +60,7 @@ Layers, back to front:
 2. foliage wall, with sunlit touches
 3. willow fronds fringing the top
 4. bank, with irises and grasses growing along it
-5. water: the bank mirrored and broken into vertical and horizontal strokes
+5. water: the bank mirrored and broken into vertical and horizontal strokes, then the open water between the rafts worked up in small, high-contrast touches (bright mirrored leaves, violet-blue shade, pale patches of sky)
 6. glints of sky
 7. the bridge's reflection
 8. lily pads, each a few horizontal strokes rather than a drawn leaf
