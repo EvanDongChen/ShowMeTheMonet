@@ -101,12 +101,14 @@ export class River {
       cards.push(bridge);
     }
 
-    // Banks: rows of cards at increasing distance behind each bank, nearest row lowest.
+    // Banks: rows of cards at increasing distance behind each bank, nearest row lowest. The first
+    // row stands in the shallows; the garden is planted thick, as Monet's was.
     const rows: { step: number; off: [number, number]; pick: (r: number) => CardKind | null; scale: [number, number] }[] = [
-      { step: 1.7, off: [-0.3, 0.6], pick: (r) => (r < 0.45 ? 'reeds' : r < 0.68 ? 'iris' : null), scale: [0.8, 1.25] },
-      { step: 3.4, off: [0.8, 3], pick: (r) => (r < 0.75 ? 'shrub' : null), scale: [0.8, 1.3] },
-      { step: 6.5, off: [1.5, 6], pick: (r) => (r < 0.55 ? 'willow' : r < 0.8 ? 'poplar' : null), scale: [0.85, 1.2] },
-      { step: 15, off: [11, 18], pick: () => 'backdrop', scale: [1, 1.4] },
+      { step: 2.4, off: [-1.9, -0.6], pick: (r) => (r < 0.3 ? 'reeds' : r < 0.45 ? 'iris' : null), scale: [0.6, 1] },
+      { step: 1.1, off: [-0.3, 0.6], pick: (r) => (r < 0.3 ? 'reeds' : r < 0.5 ? 'iris' : r < 0.75 ? 'grass' : r < 0.9 ? 'flowers' : null), scale: [0.75, 1.25] },
+      { step: 2.2, off: [0.8, 3], pick: (r) => (r < 0.6 ? 'shrub' : r < 0.9 ? 'flowers' : 'grass'), scale: [0.8, 1.35] },
+      { step: 4.6, off: [1.5, 6], pick: (r) => (r < 0.5 ? 'willow' : r < 0.72 ? 'poplar' : r < 0.9 ? 'shrub' : null), scale: [0.85, 1.25] },
+      { step: 11, off: [10, 17], pick: () => 'backdrop', scale: [1, 1.4] },
     ];
     for (const side of [-1, 1]) {
       rows.forEach((row, ri) => {
@@ -116,8 +118,8 @@ export class River {
           const off = r.range(row.off[0], row.off[1]), scale = r.range(row.scale[0], row.scale[1]);
           const variant = r.int(0, 99), flip = r.chance(0.5);
           // Keep the banks clear where a bridge lands, except for its far backdrop.
-          if (!kind || (ri < 3 && Math.abs(z - bz) < 2.5)) continue;
-          const x = this.center(z) + side * (this.half(z) + off + (kind === 'backdrop' ? 0 : CARDS[kind].w * scale * 0.3));
+          if (!kind || (ri < 4 && Math.abs(z - bz) < 2.5)) continue;
+          const x = this.center(z) + side * (this.half(z) + off + (kind === 'backdrop' || ri === 0 ? 0 : CARDS[kind].w * scale * 0.3));
           cards.push(this.card(kind, variant % CARDS[kind].variants, x, z, scale, flip));
         }
       });
@@ -131,10 +133,10 @@ export class River {
 
     // Rafts of lilies, mostly drifting near the banks.
     const r = g.rng(0x7e4c, k, 0x1a9);
-    for (let c = r.int(3, 6); c > 0; c--) {
+    for (let c = r.int(4, 8); c > 0; c--) {
       const cz = z0 + r.random() * REACH, u = (r.chance(0.75) ? r.range(0.45, 0.95) : r.range(-0.4, 0.4)) * (r.chance(0.5) ? 1 : -1);
-      const half = this.half(cz), cx = this.center(cz) + u * half, rad = r.range(1, 3.2);
-      for (let n = r.int(6, 20); n > 0; n--) {
+      const half = this.half(cz), cx = this.center(cz) + u * half, rad = r.range(1.2, 4);
+      for (let n = r.int(10, 30); n > 0; n--) {
         const a = r.random() * Math.PI * 2, d = Math.sqrt(r.random()) * rad;
         const x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d * 1.4;
         const size = r.range(0.5, 1.15), variant = r.int(0, CARDS.pad.variants - 1), bloom = r.chance(0.13), bv = r.int(0, 99);
@@ -144,8 +146,8 @@ export class River {
       }
     }
 
-    // Glints of sky and darker ripples on the open water.
-    for (let i = 0; i < 110; i++) {
+    // Glints of sky on the open water.
+    for (let i = 0; i < 60; i++) {
       const z = z0 + r.random() * REACH, u = r.range(-0.95, 0.95);
       glints.push({ x: this.center(z) + u * this.half(z), z, len: r.range(0.3, 1.4), tone: r.random(), dark: r.chance(0.55) });
     }

@@ -5,29 +5,31 @@
 // Card coordinates are metres, with the origin at the top left and the card's foot on the water
 // at y = h. A card is painted from hash(seed, kind, variant), so a variant always looks the same.
 import { mix, type RGB } from '../core/color';
-import { dab, dabLine, ramp, touch, type Ctx, type Pt } from '../core/dab';
-import { clamp, lerp } from '../core/math';
+import { dab, dabLine, flat, ramp, touch, type Ctx, type Pt } from '../core/dab';
+import { lerp } from '../core/math';
 import type { Rng } from '../core/rng';
 import type { Garden } from '../world/garden';
 import type { Series } from '../world/series';
+import { drawPad } from './lilies';
 import { context2d, makeCanvas, type AnyCanvas } from './tiles';
 
-export type CardKind = 'reeds' | 'iris' | 'shrub' | 'willow' | 'poplar' | 'backdrop' | 'bridge' | 'pad' | 'bloom' | 'bow';
+export type CardKind = 'reeds' | 'iris' | 'grass' | 'flowers' | 'shrub' | 'willow' | 'poplar' | 'backdrop' | 'bridge' | 'pad' | 'bloom';
 
 export interface CardSpec { w: number; h: number; variants: number; ppm: number; }
 
 /** Size in metres, how many variants a seed paints, and the pixel density they're painted at. */
 export const CARDS: Record<CardKind, CardSpec> = {
   reeds: { w: 1.8, h: 2.2, variants: 5, ppm: 56 },
+  grass: { w: 2.2, h: 1, variants: 4, ppm: 56 },
+  flowers: { w: 3.2, h: 1.5, variants: 6, ppm: 48 },
   iris: { w: 1.8, h: 1.3, variants: 4, ppm: 56 },
   shrub: { w: 3.6, h: 2.6, variants: 5, ppm: 44 },
   willow: { w: 8, h: 9, variants: 5, ppm: 36 },
   poplar: { w: 3.6, h: 12, variants: 3, ppm: 30 },
   backdrop: { w: 20, h: 9, variants: 4, ppm: 20 },
   bridge: { w: 16, h: 4.4, variants: 2, ppm: 60 },
-  pad: { w: 1, h: 1, variants: 8, ppm: 72 },
+  pad: { w: 1, h: 0.4, variants: 8, ppm: 96 },
   bloom: { w: 0.4, h: 0.3, variants: 4, ppm: 160 },
-  bow: { w: 3, h: 1.4, variants: 1, ppm: 280 },
 };
 
 export const CARD_KINDS = Object.keys(CARDS) as CardKind[];
@@ -165,45 +167,40 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
   bridge(c) {
     const { ctx, rng, w, h, s } = c, deck = (x: number) => BRIDGE.deckY(x, w, h);
     const thick = BRIDGE.thick * h, railH = BRIDGE.railH * h;
+    const shade = mix(ramp(s.bridge, 0.15), s.accent[0], 0.35), warm = mix(ramp(s.bridge, 0.92), s.accent[3], 0.35);
     // Piles standing in the water under the ends and the middle of the span.
     for (const u of [0.1, 0.22, 0.42, 0.58, 0.78, 0.9]) {
-      const x = w * u;
-      dabLine(ctx, rng, [[x, h + 0.1], [x, deck(x) + thick]], 0.16, ramp(s.bridge, 0.15), 0.95, 0.18);
+      const x = w * u + rng.range(-0.08, 0.08);
+      dabLine(ctx, rng, [[x, h + 0.1], [x + rng.range(-0.04, 0.04), deck(x) + thick]], 0.2, mix(shade, ramp(s.bridge, 0.25), 0.5), 0.95, 0.2);
     }
     const slope = (x: number) => Math.atan2(deck(x + 0.05) - deck(x - 0.05), 0.1);
-    for (let x = 0.1; x < w - 0.1; x += 0.12) {
+    for (let x = 0.1; x < w - 0.1; x += 0.13) {
       const y = deck(x), a = slope(x);
-      for (const [f, t] of [[0.85, 0.15], [0.5, 0.5], [0.15, 0.85]] as const) {
-        dab(ctx, x, y + thick * t, rng.range(0.22, 0.32), thick * 0.45, a + rng.range(-0.05, 0.05), ramp(s.bridge, f * 0.85 + rng.range(-0.08, 0.08)), 0.95);
+      // The deck: violet shade beneath, the bridge's own green, warm light along the top.
+      for (const t of [0.85, 0.5, 0.15]) {
+        const col = t > 0.6 ? mix(shade, ramp(s.bridge, 0.3), rng.random()) : ramp(s.bridge, (1 - t) * 0.8 + rng.range(-0.1, 0.1));
+        touch(ctx, rng, x, y + thick * t, rng.range(0.24, 0.36), thick * rng.range(0.4, 0.55), a + rng.range(-0.07, 0.07), col, 0.95);
       }
+      if (rng.chance(0.5)) flat(ctx, rng, x, y - 0.02, rng.range(0.12, 0.24), 0.04, a, warm, 0.85);
       for (let r = 1; r <= 2; r++) {
-        dab(ctx, x, y - (railH * r) / 2, rng.range(0.2, 0.3), 0.1, a + rng.range(-0.05, 0.05), ramp(s.bridge, 0.5 + rng.range(-0.12, 0.12)), 0.95);
+        if (rng.chance(0.08)) continue;
+        touch(ctx, rng, x, y - (railH * r) / 2 + rng.range(-0.015, 0.015), rng.range(0.22, 0.32), rng.range(0.1, 0.14), a + rng.range(-0.06, 0.06), ramp(s.bridge, 0.5 + rng.range(-0.15, 0.12)), 0.95);
       }
-      if (rng.chance(0.6)) dab(ctx, x, y - railH - 0.04, rng.range(0.12, 0.22), 0.035, a, ramp(s.bridge, 0.95), 0.8);
+      if (rng.chance(0.55)) flat(ctx, rng, x, y - railH - 0.05, rng.range(0.12, 0.22), 0.04, a, rng.chance(0.4) ? warm : ramp(s.bridge, 0.95), 0.8);
     }
     for (let x = 0.35; x < w - 0.3; x += 0.75) {
-      const y = deck(x);
-      dabLine(ctx, rng, [[x, y + 0.02], [x, y - railH - 0.06]], 0.11, ramp(s.bridge, 0.42), 0.95, 0.14);
-      dabLine(ctx, rng, [[x - 0.035, y], [x - 0.035, y - railH]], 0.03, ramp(s.bridge, 0.9), 0.6, 0.16);
+      const y = deck(x), lean = rng.range(-0.03, 0.03);
+      dabLine(ctx, rng, [[x, y + 0.02], [x + lean, y - railH - 0.08]], 0.14, ramp(s.bridge, rng.range(0.32, 0.5)), 0.95, 0.15);
+      dabLine(ctx, rng, [[x - 0.05, y], [x - 0.05 + lean, y - railH]], 0.035, ramp(s.bridge, 0.9), 0.55, 0.16);
     }
   },
 
   pad(c) {
-    // Seen from straight above; the drift squashes it flat onto the water.
-    const { ctx, rng, s, v } = c, tone = 0.3 + (v / CARDS.pad.variants) * 0.6, notch = rng.range(0, Math.PI * 2);
-    const body = ramp(s.pad, tone);
-    ctx.fillStyle = `rgba(${body.map((n) => n | 0).join(',')},0.95)`;
-    ctx.beginPath();
-    ctx.moveTo(0.5, 0.5);
-    ctx.arc(0.5, 0.5, 0.46, notch + 0.22, notch - 0.22 + Math.PI * 2);
-    ctx.closePath();
-    ctx.fill();
-    for (let i = 0; i < 14; i++) {
-      const a = rng.range(0, Math.PI * 2), r = rng.range(0.05, 0.36);
-      if (Math.abs(((a - notch + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.35) continue;
-      dab(ctx, 0.5 + Math.cos(a) * r, 0.5 + Math.sin(a) * r, rng.range(0.16, 0.26), rng.range(0.07, 0.12), a + Math.PI / 2 + rng.range(-0.3, 0.3), ramp(s.pad, clamp(tone + rng.range(-0.15, 0.2), 0, 1)), 0.85);
-    }
-    dab(ctx, 0.42, 0.3, 0.4, 0.08, -0.1, ramp(s.pad, 0.95), 0.6);
+    // Painted already foreshortened, in the easel's horizontal strokes; the drift squashes it a
+    // little more for depth. Drawn in easel units (a hundred to the metre) so the strokes match.
+    const { ctx, rng, s, v } = c;
+    ctx.scale(0.01, 0.01);
+    drawPad(ctx, rng, { x: 50, y: 20, w: 90, h: 32, rot: 0, tone: (v + 0.5) / CARDS.pad.variants, notch: rng.range(-2.6, -0.5), flower: -1, key: 0 }, s);
   },
 
   bloom(c) {
@@ -217,21 +214,30 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
     dab(ctx, w / 2, h * 0.88, 0.3, 0.05, 0, ramp(s.pad, 0.4), 0.8);
   },
 
-  bow(c) {
-    // The front of our own rowboat, seen from the seat: two gunwales meeting at the stem.
-    const { ctx, rng, w, h } = c, wood: RGB[] = [[46, 32, 26], [72, 50, 36], [104, 72, 48], [150, 108, 72]];
-    const curve = (y: number) => Math.pow(y / h, 0.7);
-    const left = (y: number) => lerp(w * 0.5, 0.05, curve(y)), right = (y: number) => lerp(w * 0.5, w - 0.05, curve(y));
-    for (let y = h * 0.04; y < h; y += 0.035) {
-      const x0 = left(y), x1 = right(y), t = y / h;
-      for (let x = x0; x < x1; x += 0.08) {
-        dab(ctx, x + rng.random() * 0.08, y, rng.range(0.12, 0.2), 0.05, rng.range(-0.06, 0.06), ramp(wood, 0.15 + t * 0.35 + rng.range(-0.1, 0.1)), 0.95);
-      }
+  grass(c) {
+    // A tuft of long grass leaning every which way, with a few seed heads.
+    const { ctx, rng, w, h, s } = c, n = rng.int(28, 44);
+    for (let i = 0; i < n; i++) {
+      const x = w * (0.5 + rng.bell() * 0.3), tall = h * rng.range(0.35, 1), lean = (x / w - 0.5) * 1.4 + rng.range(-0.4, 0.4);
+      const pts: Pt[] = [[x, h], [x + Math.sin(lean) * tall * 0.35, h - tall * 0.55], [x + Math.sin(lean) * tall * 0.8, h - tall]];
+      dabLine(ctx, rng, pts, rng.range(0.03, 0.06), ramp(s.reed, rng.range(0.2, 1)), 0.92, 0.09);
     }
-    for (const side of [left, right]) {
-      const pts: Pt[] = [];
-      for (let t = 0; t <= 1.0001; t += 0.1) pts.push([side(t * h), t * h]);
-      dabLine(ctx, rng, pts, 0.09, ramp(wood, 0.85), 0.95, 0.1);
+    for (let i = rng.int(2, 6); i > 0; i--) dab(ctx, w * rng.range(0.25, 0.75), h * rng.range(0.05, 0.3), 0.12, 0.04, Math.PI / 2 + rng.range(-0.4, 0.4), mix(s.reed[3], s.accent[3], 0.4), 0.9);
+  },
+
+  flowers(c) {
+    // A bed of flowers: a low mound of leaves thick with blossom in one or two colours.
+    const { ctx, rng, w, h, g, s, v } = c, inside = blob(c, w / 2, h * 0.62, w * 0.47, h * 0.4, 0.3);
+    mass(c, 0.13, 0.26, (x, y) => Math.min(inside(x, y), (h - y) * 4),
+      (x, y) => 0.55 - (y / h) * 0.45 + g.noise.noise2(x * 1.5 + v * 7, y * 1.5) * 0.25,
+      (x, y) => Math.PI / 2 + g.noise.noise2(x * 2, y * 2 + 3) * 1.2);
+    const hues: RGB[] = [s.flower[2], s.accent[1], s.accent[3], s.flower[0], s.flower[3], s.accent[2]];
+    const a = hues[v % hues.length], b = hues[(v + 2) % hues.length];
+    for (let i = 0; i < 150; i++) {
+      const x = rng.random() * w, y = rng.random() * h;
+      if (inside(x, y) < 0.05 || y > h * 0.92) continue;
+      const col = mix(rng.chance(0.75) ? a : b, [255, 255, 255], rng.range(0, 0.35));
+      touch(ctx, rng, x, y, rng.range(0.07, 0.14), rng.range(0.05, 0.09), rng.range(0, Math.PI), col, 0.95);
     }
   },
 };

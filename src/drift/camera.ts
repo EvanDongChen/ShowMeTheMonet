@@ -1,6 +1,6 @@
-// The rowboat we sit in, which is also the camera. Rowing gives bursts of momentum that the water
-// slowly takes back; steering turns the bow; left alone, the boat drifts on and gently follows the
-// channel so it never runs aground.
+// The rowboat we sit in, which is also the camera. Rowing eases the boat up to speed and the water
+// slowly takes it back; steering turns the bow; left alone, the boat glides on and gently follows
+// the channel so it never runs aground. It sits steady: a glide, not a bob.
 import { clamp, lerp } from '../core/math';
 import type { River } from './river';
 
@@ -42,14 +42,15 @@ export class Boat {
     this.t += dt;
     this.sinceStroke += dt;
 
-    // Each stroke is an impulse; holding the key keeps a steady rowing rhythm.
-    if (c.row !== 0 && this.sinceStroke > 1.05) {
-      this.v = clamp(this.v + c.row * 1.25, -1.6, 4.2);
+    // Rowing eases toward a steady pace rather than jolting; the oars still dip in a rhythm,
+    // which the ripples follow.
+    if (c.row !== 0 && this.sinceStroke > 1.3) {
       this.sinceStroke = 0;
       this.strokes++;
     }
-    const cruise = this.drifting && c.row === 0 ? Boat.DRIFT : 0;
-    this.v += (cruise - this.v) * (1 - Math.exp(-0.35 * dt));
+    const target = c.row !== 0 ? c.row * (c.row > 0 ? 3 : 1.2) : this.drifting ? Boat.DRIFT : 0;
+    this.v += (target - this.v) * (1 - Math.exp(-(c.row !== 0 ? 0.7 : 0.3) * dt));
+    this.v = clamp(this.v, -1.6, 4);
 
     // Steering turns the bow; without it, the channel's own direction slowly takes over.
     this.turn = lerp(this.turn, c.steer * 0.55, 1 - Math.exp(-3 * dt));
@@ -73,14 +74,9 @@ export class Boat {
     this.look = lerp(this.look, c.look * 0.32, 1 - Math.exp(-3 * dt));
   }
 
-  /** Sway on the water: a slow heave, a gentle roll, and a dip just after each stroke. */
-  bob() {
-    const t = this.t, pull = Math.exp(-this.sinceStroke * 2.5) * Math.min(1, this.sinceStroke * 6);
-    return {
-      dy: Math.sin(t * 1.1) * 0.018 + Math.sin(t * 0.43) * 0.012 - pull * 0.025,
-      roll: Math.sin(t * 0.7) * 0.012 + Math.sin(t * 1.7) * 0.004,
-      pitch: pull * 0.02,
-    };
+  /** The faintest swell, just enough that the water feels like water. */
+  get heave() {
+    return Math.sin(this.t * 0.45) * 0.004;
   }
 
   get viewYaw() {

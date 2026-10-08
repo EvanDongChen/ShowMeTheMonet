@@ -5,14 +5,16 @@
 // boat moves. Between depth slabs a thin veil of the series' air is laid over everything already
 // drawn, so each layer back is a little paler: the stacked-cardboard depth of a lit diorama.
 // The water is a mirror: every standing card is drawn again upside down into a reflection buffer
-// that is pasted below the horizon in rippling strips.
-import { css, darken, lighten, mix } from '../core/color';
+// that is pasted below the horizon in rippling strips, and then painted over with brushwork laid
+// on the water plane in perspective (./water.ts).
+import { css, darken, mix } from '../core/color';
 import { dab, ramp } from '../core/dab';
 import { lerp } from '../core/math';
-import { CARDS, cardId } from '../paint/cards';
+import { cardId } from '../paint/cards';
 import type { Garden } from '../world/garden';
 import { Boat, EYE } from './camera';
 import { River, type Placed } from './river';
+import { PaintedWater, paintSky, weavePattern } from './water';
 
 const NEAR = 0.55, FAR = 120;
 /** Depth slabs, far to near: the veil is laid down each time drawing crosses one. */
@@ -36,16 +38,20 @@ export class DriftRenderer {
   private shown: Shown[] = [];
   /** Distance over which the air veils the garden: shorter in mist. */
   private haze: number;
+  private sky: HTMLCanvasElement;
+  private water: PaintedWater | null = null;
+  private weave: CanvasPattern | null = null;
 
   constructor(private g: Garden, private river: River, private image: ImageOf) {
     this.haze = lerp(85, 26, Math.min(1, g.series.mist / 0.42));
+    this.sky = paintSky(g);
   }
 
   view(boat: Boat, w: number, h: number): View {
-    const b = boat.bob(), yaw = boat.viewYaw;
+    const yaw = boat.viewYaw;
     // A wide lens on landscape screens, a little wider still on tall ones so the banks stay in view.
     const f = Math.max(w, h * 1.1) / 2 / Math.tan((72 * Math.PI) / 360);
-    return { w, h, f, hy: h * (0.44 + b.pitch), x: boat.x, z: boat.z, eye: EYE + b.dy, sin: Math.sin(yaw), cos: Math.cos(yaw) };
+    return { w, h, f, hy: h * 0.44, x: boat.x, z: boat.z, eye: EYE + boat.heave, sin: Math.sin(yaw), cos: Math.cos(yaw) };
   }
 
   /** Card ids in the order they're needed: what's in view nearest first, then everything else. */
@@ -55,7 +61,6 @@ export class DriftRenderer {
     for (let k = River.reachOf(boat.z) - 1; k <= River.reachOf(boat.z + FAR); k++) {
       for (const p of this.river.reach(k).cards) out.add(cardId(p.kind, p.variant));
     }
-    out.add(cardId('bow', 0));
     return [...out];
   }
 
@@ -65,29 +70,23 @@ export class DriftRenderer {
   }
 
   draw(ctx: CanvasRenderingContext2D, boat: Boat, t: number, w: number, h: number, overlay?: (v: View) => void) {
-    const v = this.view(boat, w, h), s = this.g.series, roll = boat.bob().roll;
+    const v = this.view(boat, w, h), s = this.g.series, yaw = boat.viewYaw;
     this.collect(v);
+    this.water ??= new PaintedWater(this.g, ctx);
+    this.weave ??= weavePattern(ctx);
 
-    ctx.save();
-    ctx.translate(w / 2, h / 2);
-    ctx.rotate(roll);
-    ctx.scale(1.04, 1.04);
-    ctx.translate(-w / 2, -h / 2);
-
-    // Sky (rarely seen past the trees) and the water's own colour.
-    const sky = ctx.createLinearGradient(0, 0, 0, v.hy);
-    sky.addColorStop(0, css(lighten(mix(s.air, s.glint[0], 0.5), 0.15)));
-    sky.addColorStop(1, css(s.air));
-    ctx.fillStyle = sky;
-    ctx.fillRect(-w, -h, w * 3, v.hy + h);
+    // The sky glimpsed over the trees, swinging a little as we turn.
+    ctx.drawImage(this.sky, -w * 0.3 - Math.max(-1, Math.min(1, yaw)) * w * 0.15, 0, w * 1.6, v.hy + 2);
     const water = ctx.createLinearGradient(0, v.hy, 0, h);
     water.addColorStop(0, css(mix(s.air, ramp(s.water, 0.6), 0.5)));
     water.addColorStop(0.25, css(ramp(s.water, 0.45)));
     water.addColorStop(1, css(ramp(s.water, 0.18)));
     ctx.fillStyle = water;
-    ctx.fillRect(-w, v.hy, w * 3, h * 2);
+    ctx.fillRect(0, v.hy, w, h);
 
     this.reflect(ctx, v, t);
+    this.water.follow(boat.x, boat.z, v.sin, v.cos);
+    this.water.draw(ctx, v, yaw, (z) => this.clear(z));
     this.glints(ctx, v, t);
 
     // The cards, far to near, with a veil of air laid down at each slab boundary.
@@ -106,17 +105,22 @@ export class DriftRenderer {
     glow.addColorStop(0, css(s.air, 0.22));
     glow.addColorStop(1, css(s.air, 0));
     ctx.fillStyle = glow;
-    ctx.fillRect(-w, -h, w * 3, h * 3);
+    ctx.fillRect(0, 0, w, h);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
-
-    this.bow(ctx, boat, w, h);
 
     const vig = ctx.createRadialGradient(w / 2, h * 0.45, Math.min(w, h) * 0.35, w / 2, h * 0.5, Math.max(w, h) * 0.8);
     vig.addColorStop(0, 'rgba(0,0,0,0)');
     vig.addColorStop(1, css(darken(s.washBottom, 0.5), 0.45));
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, w, h);
+
+    // The weave of the canvas showing through the paint.
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = this.weave;
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   /** Project everything in range and sort it far to near. */
@@ -127,7 +131,7 @@ export class DriftRenderer {
       for (const p of this.river.reach(k).cards) {
         const dx = p.x - v.x, dz = p.z - v.z;
         const zr = dx * v.sin + dz * v.cos;
-        if (zr < (p.flat ? 0.3 : NEAR) || zr > FAR) continue;
+        if (zr < (p.flat ? 1.1 : NEAR) || zr > FAR) continue;
         const xr = dx * v.cos - dz * v.sin, sc = v.f / zr, sw = p.w * sc, sx = v.w / 2 + xr * sc;
         if (sx + sw / 2 < -v.w * 0.1 || sx - sw / 2 > v.w * 1.1) continue;
         // A pad lies on the water, so it is foreshortened by how steeply we look down at it.
@@ -150,6 +154,8 @@ export class DriftRenderer {
       return;
     }
     const y = p.flat ? sy - sh / 2 : sy - sh;
+    // Pads right under the bow fade away rather than looming up as giant blurs.
+    if (p.flat && it.zr < 2.2) ctx.globalAlpha = (it.zr - 1.1) / 1.1;
     if (p.flip) {
       ctx.save();
       ctx.translate(sx, 0);
@@ -159,6 +165,7 @@ export class DriftRenderer {
     } else {
       ctx.drawImage(img, sx - sw / 2, y, sw, sh);
     }
+    ctx.globalAlpha = 1;
   }
 
   /** Lay a veil of air over everything drawn so far, down to where water at this depth lies. */
@@ -167,7 +174,7 @@ export class DriftRenderer {
     const a = 1 - this.clear(far - near);
     const bottom = v.hy + (v.eye * v.f) / far;
     ctx.fillStyle = css(this.g.series.air, a);
-    ctx.fillRect(-v.w, -v.h, v.w * 3, bottom + v.h);
+    ctx.fillRect(0, 0, v.w, bottom);
   }
 
   /** The mirror: standing cards upside down, broken into ripples below the horizon. */
@@ -206,7 +213,7 @@ export class DriftRenderer {
     tint.addColorStop(0.3, css(ramp(this.g.series.water, 0.4), 0.18));
     tint.addColorStop(1, css(ramp(this.g.series.water, 0.15), 0.3));
     ctx.fillStyle = tint;
-    ctx.fillRect(-v.w, hy, v.w * 3, v.h * 2);
+    ctx.fillRect(0, hy, v.w, v.h);
   }
 
   /** Flecks of sky on the water, each lying at a fixed spot so they sweep past as we row. */
@@ -215,7 +222,7 @@ export class DriftRenderer {
     for (let k = k0; k <= k1; k++) {
       for (const gl of this.river.reach(k).glints) {
         const dx = gl.x - v.x, dz = gl.z - v.z, zr = dx * v.sin + dz * v.cos;
-        if (zr < (gl.dark ? 1.2 : 3) || zr > 60) continue;
+        if (gl.dark || zr < 3 || zr > 60) continue;
         const sc = v.f / zr, sx = v.w / 2 + (dx * v.cos - dz * v.sin) * sc;
         if (sx < -50 || sx > v.w + 50) continue;
         const shimmer = 0.5 + 0.5 * Math.sin(t * 1.3 + gl.tone * 20);
@@ -224,17 +231,5 @@ export class DriftRenderer {
         dab(ctx, sx + Math.sin(t * 0.8 + gl.tone * 9) * len * 0.05, v.hy + v.eye * sc, len, Math.max(1, Math.min(len * 0.09, gl.dark ? 7 : 4)), 0, col, a * (0.4 + 0.6 * this.clear(zr)));
       }
     }
-  }
-
-  /** Our own bow at the foot of the view, rocking with the boat. */
-  private bow(ctx: CanvasRenderingContext2D, boat: Boat, w: number, h: number) {
-    const img = this.image(cardId('bow', 0));
-    if (!img) return;
-    const b = boat.bob(), bw = Math.min(w * 0.46, h * 0.85), bh = bw * (CARDS.bow.h / CARDS.bow.w);
-    ctx.save();
-    ctx.translate(w / 2, h + bh * 0.3 + b.dy * h * 1.5);
-    ctx.rotate(-b.roll * 2);
-    ctx.drawImage(img, -bw / 2, -bh, bw, bh);
-    ctx.restore();
   }
 }
