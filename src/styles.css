@@ -272,27 +272,6 @@ button { font: inherit; color: inherit; }
 /* The painting is a door: it invites a click once it is finished. */
 .canvas.ready { cursor: pointer; }
 .canvas.ready:hover #picture { filter: brightness(1.04) saturate(1.05); }
-.enter-cue {
-  position: absolute;
-  left: 50%;
-  top: 46%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 20px 9px 16px;
-  font-family: var(--hand);
-  font-size: 19px;
-  color: var(--ink);
-  background: rgba(251, 248, 241, 0.92);
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(var(--shadow), 0.28);
-  transform: translate(-50%, -46%) scale(0.94);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.45s var(--ease);
-}
-.enter-cue svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.canvas.ready:hover .enter-cue { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
 /* ——— Stepping in ——— */
 
