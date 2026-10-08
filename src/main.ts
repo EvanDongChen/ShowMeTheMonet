@@ -1,6 +1,7 @@
 // The page: the easel with its painting, the palette of controls, and the drift behind the canvas.
 import './styles.css';
 import { Life } from './anim/life';
+import { Ambience } from './anim/sound';
 import { clamp } from './core/math';
 import { Drift } from './drift/drift';
 import { PaintPool } from './paint/pool';
@@ -34,6 +35,8 @@ let garden: Garden;
 let pool: PaintPool;
 let life: Life;
 let drift: Drift | null = null;
+const sound = new Ambience();
+sound.muted = storage('monet-muted') === '1';
 let scale = 1;
 let animate = params.get('animate') !== '0' && !reduced;
 let mode: 'easel' | 'drift' = 'easel';
@@ -141,6 +144,7 @@ function startDrift() {
 function enterDrift(immediate = false) {
   if (mode === 'drift') return;
   mode = 'drift';
+  sound.start();
   if (!drift) startDrift();
   setModeParam();
   if (immediate || reduced) {
@@ -157,6 +161,7 @@ function enterDrift(immediate = false) {
 function leaveDrift() {
   if (mode === 'easel') return;
   mode = 'easel';
+  sound.stop();
   drift?.clearKeys();
   app.dataset.mode = 'easel';
   setModeParam();
@@ -168,6 +173,12 @@ function setModeParam() {
   if (mode === 'drift') u.searchParams.set('mode', 'drift');
   else u.searchParams.delete('mode');
   history.replaceState(null, '', u);
+}
+
+function toggleSound() {
+  sound.setMuted(!sound.muted);
+  storage('monet-muted', sound.muted ? '1' : '0');
+  toast(sound.muted ? 'sound off' : 'sound on');
 }
 
 function togglePause() {
@@ -288,6 +299,7 @@ addEventListener('keydown', (e) => {
     if (e.code === 'Escape' || e.code === 'KeyE') leaveDrift();
     else if (e.code === 'Space') { e.preventDefault(); togglePause(); }
     else if (e.code === 'KeyP') savePicture();
+    else if (e.code === 'KeyM') toggleSound();
     else if (e.code === 'KeyC') share();
     return;
   }
@@ -301,13 +313,15 @@ addEventListener('keydown', (e) => {
   }
 });
 addEventListener('keyup', (e) => drift?.key(e.code, false));
+// Opening the drift from the address bar has no click to start the sound with; the first one does.
+for (const type of ['pointerdown', 'keydown'] as const) addEventListener(type, () => { if (mode === 'drift') sound.start(); }, { once: true });
 addEventListener('blur', () => drift?.clearKeys());
 
 // In the boat the eye follows the mouse; on a touch screen, hold to row and drag to steer.
 let touchStart: { x: number; id: number } | null = null;
 driftCanvas.addEventListener('pointermove', (e) => {
   if (!drift) return;
-  if (e.pointerType === 'mouse') drift.look((e.clientX / innerWidth) * 2 - 1);
+  if (e.pointerType === 'mouse') drift.look((e.clientX / innerWidth) * 2 - 1, (e.clientY / innerHeight) * 2 - 1);
   else if (touchStart && e.pointerId === touchStart.id) drift.touch(1, (e.clientX - touchStart.x) / (innerWidth * 0.22));
 });
 driftCanvas.addEventListener('pointerdown', (e) => {
@@ -325,7 +339,7 @@ const release = (e: PointerEvent) => {
 driftCanvas.addEventListener('pointerup', release);
 driftCanvas.addEventListener('pointercancel', release);
 driftCanvas.addEventListener('pointerleave', (e) => {
-  if (e.pointerType === 'mouse') drift?.look(0);
+  if (e.pointerType === 'mouse') drift?.look(0, 0);
 });
 
 addEventListener('resize', () => layout());
@@ -361,6 +375,7 @@ function frame(now: number) {
     }
     drift.request();
     drift.update(dt);
+    sound.update(dt, drift.boat);
     drift.draw(driftCtx, t, w, h);
 
     frameMs = frameMs * 0.95 + ms * 0.05;

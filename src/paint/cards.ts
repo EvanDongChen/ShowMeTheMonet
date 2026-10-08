@@ -14,7 +14,7 @@ import { plantTouch } from './foliage';
 import { drawPad } from './lilies';
 import { context2d, makeCanvas, type AnyCanvas } from './tiles';
 
-export type CardKind = 'reeds' | 'iris' | 'grass' | 'flowers' | 'shrub' | 'willow' | 'poplar' | 'backdrop' | 'bridge' | 'pad' | 'bloom';
+export type CardKind = 'reeds' | 'iris' | 'grass' | 'flowers' | 'shrub' | 'willow' | 'poplar' | 'backdrop' | 'bridge' | 'pad' | 'bloom' | 'canopy';
 
 export interface CardSpec { w: number; h: number; variants: number; ppm: number; }
 
@@ -31,6 +31,7 @@ export const CARDS: Record<CardKind, CardSpec> = {
   bridge: { w: 16, h: 4.4, variants: 2, ppm: 60 },
   pad: { w: 1, h: 0.4, variants: 8, ppm: 144 },
   bloom: { w: 0.55, h: 0.4, variants: 6, ppm: 160 },
+  canopy: { w: 6, h: 3.2, variants: 4, ppm: 44 },
 };
 
 export const CARD_KINDS = Object.keys(CARDS) as CardKind[];
@@ -134,6 +135,28 @@ const PAINTERS: Record<CardKind, (c: CardCtx) => void> = {
     mass(c, 0.2, 0.4, (x, y) => Math.min(inside(x, y), (h * 0.95 - y)),
       (x, y) => 0.8 - (y / h) * 0.45 - (x / w) * 0.25 + g.noise.noise2(x + c.v * 9, y * 0.5) * 0.3,
       () => Math.PI / 2 + c.rng.range(-0.2, 0.2), c.s.foliage, () => 1);
+  },
+
+  canopy(c) {
+    // Branches arching over the water: a mass of backlit leaves with fronds hanging from its ragged
+    // underside. Stood high above the water, so rowing under them is rowing under the garden.
+    const { ctx, rng, w, h, g, s } = c, k = c.v % 2 === 0 ? 0 : 2;
+    const edge = (x: number) => h * (0.3 + 0.16 * g.noise.noise2(x * 0.9 + c.v * 11, 3.1));
+    // Ragged above as well as below, so the branch has a leafy silhouette against whatever is behind it.
+    const roof = (x: number) => h * (0.08 + 0.09 * (0.5 + 0.5 * g.noise.noise2(x * 1.6 + c.v * 7, 9.7)));
+    mass(c, 0.11, 0.24, (x, y) => Math.min((edge(x) - y) / 0.5, (y - roof(x)) / 0.35, Math.min(x, w - x) / 1.1),
+      (x, y) => 0.7 - (y / h) * 0.4 + g.noise.noise2(x * 1.2 + c.v * 5, y * 1.2) * 0.3,
+      (x, y) => Math.PI / 2 + g.noise.noise2(x, y + 7) * 0.6, s.foliage, () => k);
+    const n = Math.round(w * 8);
+    for (let i = 0; i < n; i++) {
+      const x = w * (0.05 + (0.9 * (i + rng.random())) / n), top = edge(x) - 0.12;
+      const bottom = Math.min(h * 0.99, top + h * rng.range(0.25, 0.75) * (rng.chance(0.2) ? 1.3 : 1));
+      if (bottom - top < 0.2 || rng.chance(0.25)) continue;
+      const sway = rng.range(-0.2, 0.2), pts: Pt[] = [];
+      for (let t = 0; t <= 1.0001; t += 0.125) pts.push([x + sway * t * t + Math.sin(t * 6 + i) * 0.04, lerp(top, bottom, t)]);
+      const base = ramp(s.foliage, 0.55 + rng.range(-0.2, 0.3));
+      dabLine(ctx, rng, pts, rng.range(0.06, 0.13), rng.chance(0.2) ? mix(s.accent[4], base, 0.45) : base, 0.85, 0.2);
+    }
   },
 
   backdrop(c) {

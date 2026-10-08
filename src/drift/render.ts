@@ -7,7 +7,7 @@
 // The water is a mirror: every standing card is drawn again upside down into a reflection buffer
 // that is pasted below the horizon in rippling strips, and then painted over with brushwork laid
 // on the water plane in perspective (./water.ts).
-import { css, darken, mix } from '../core/color';
+import { css, darken, lighten, mix } from '../core/color';
 import { dab, ramp } from '../core/dab';
 import { clamp, lerp } from '../core/math';
 import { cardId } from '../paint/cards';
@@ -69,7 +69,7 @@ export class DriftRenderer {
     const yaw = boat.viewYaw;
     // A wide lens on landscape screens, a little wider still on tall ones so the banks stay in view.
     const f = Math.max(w, h * 1.1) / 2 / Math.tan((72 * Math.PI) / 360);
-    return { w, h, f, hy: h * 0.44, x: boat.x, z: boat.z, eye: EYE + boat.heave, sin: Math.sin(yaw), cos: Math.cos(yaw) };
+    return { w, h, f, hy: h * 0.44 + boat.pitch * h * 0.12, x: boat.x, z: boat.z, eye: EYE + boat.heave, sin: Math.sin(yaw), cos: Math.cos(yaw) };
   }
 
   /** Card ids in the order they're needed: what's in view nearest first, then everything else. */
@@ -97,7 +97,8 @@ export class DriftRenderer {
 
     // The sky glimpsed over the trees: painted clouds drifting slowly, panning as we turn, with
     // the sun's bloom and birds. The tile keeps its own proportions (4:1), so clouds are never squashed.
-    const tw = (v.hy + 2) * 4, off = (((yaw * w * 0.6 + t * 2.5) % tw) + tw) % tw, sh = Math.ceil(v.hy) + 2;
+    // The sky pans at the true angular rate of the view, so it sits at infinity behind the garden.
+    const tw = (h * 0.44 + 2) * 4, off = (((yaw * v.f + t * 1.5) % tw) + tw) % tw, sh = Math.ceil(v.hy) + 2;
     if (this.skyBuf.width !== w || this.skyBuf.height !== sh) {
       this.skyBuf.width = w;
       this.skyBuf.height = sh;
@@ -128,6 +129,7 @@ export class DriftRenderer {
     this.water.follow(boat.x, boat.z, v.sin, v.cos);
     this.water.draw(ctx, v, yaw, (z) => this.clear(z));
     this.glints(ctx, v, t);
+    this.dapples(ctx, v, t);
 
     // The cards, far to near, with a veil of air laid down at each slab boundary.
     let slab = 0;
@@ -142,6 +144,7 @@ export class DriftRenderer {
     ctx.drawImage(this.skyBuf, 0, 0);
     ctx.globalCompositeOperation = 'source-over';
 
+    this.shafts(ctx, v, off, tw, t);
     overlay?.(v);
 
     // Light falling through the garden onto the water ahead, and the edge of our vision.
@@ -205,6 +208,7 @@ export class DriftRenderer {
         if (sx + sw / 2 < -v.w * 0.1 || sx - sw / 2 > v.w * 1.1) continue;
         // A pad lies on the water, so it is foreshortened by how steeply we look down at it.
         const sh = p.flat ? sw * (v.eye / zr) * 1.15 : p.h * sc;
+        if (p.elev && v.hy + (v.eye - p.elev) * sc < -8) continue;
         const id = cardId(p.kind, p.variant), img = this.image(id);
         let appear = 0;
         if (img) {
@@ -214,7 +218,7 @@ export class DriftRenderer {
         }
         const fade = appear * clamp((FAR - d) / (FAR * 0.2), 0, 1) * (p.flat ? 1 : clamp((zr - NEAR) / 0.9, 0, 1));
         if (fade <= 0.004) continue;
-        this.shown.push({ p, zr, d, sx, sy: v.hy + v.eye * sc, sw, sh, img, fade });
+        this.shown.push({ p, zr, d, sx, sy: v.hy + (v.eye - (p.elev ?? 0)) * sc, sw, sh, img, fade });
       }
     }
     this.shown.sort((a, b) => b.d - a.d);
@@ -265,7 +269,7 @@ export class DriftRenderer {
       if (it.p.flat || !it.img) continue;
       r.globalAlpha = (0.25 + 0.6 * this.clear(it.d)) * it.fade;
       r.save();
-      r.translate(it.sx, it.sy);
+      r.translate(it.sx, v.hy + (v.eye + (it.p.elev ?? 0)) * (it.sw / it.p.w));
       r.scale(it.p.flip ? -1 : 1, -1);
       r.drawImage(it.img, -it.sw / 2, -it.sh, it.sw, it.sh);
       r.restore();
@@ -287,6 +291,60 @@ export class DriftRenderer {
     tint.addColorStop(1, css(ramp(this.g.series.water, 0.15), 0.3));
     ctx.fillStyle = tint;
     ctx.fillRect(0, hy, v.w, v.h);
+  }
+
+  /** Sunlight falling through the canopy onto the water: soft slanted shafts that drift a little. */
+  private shafts(ctx: CanvasRenderingContext2D, v: View, off: number, tw: number, t: number) {
+    const s = this.g.series, strength = s.name === 'evening' ? 1.7 : s.name === 'mist' ? 1.4 : 1;
+    const col = lighten(mix(s.glint[2], [255, 244, 214], 0.5), 0.02);
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 7; i++) {
+      const u = (i + 0.5) / 7 + 0.04 * Math.sin(i * 3.7), a = (0.05 + 0.035 * Math.sin(t * 0.25 + i * 2.1)) * strength;
+      const half = 22 + (26 * ((i * 37) % 5)) / 5, len = v.h * 0.78;
+      for (const k of [-1, 0, 1]) {
+        const x0 = u * tw - off + k * tw, x1 = x0 - 0.28 * len;
+        if (x0 + 120 < 0 || x1 - 200 > v.w) continue;
+        const grad = ctx.createLinearGradient(0, 0, 0, len);
+        grad.addColorStop(0, css(col, a));
+        grad.addColorStop(1, css(col, 0));
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x0 - half, 0);
+        ctx.lineTo(x0 + half, 0);
+        ctx.lineTo(x1 + half * 2.4, len);
+        ctx.lineTo(x1 - half * 2.4, len);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  /** Patches of sun on the water, lying where they fall so they sweep past as we row. */
+  private dapples(ctx: CanvasRenderingContext2D, v: View, t: number) {
+    const s = this.g.series, k0 = River.reachOf(v.z) - 1, k1 = River.reachOf(v.z + 55), warm = mix(s.glint[2], s.accent[3], 0.3);
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let k = k0; k <= k1; k++) {
+      for (const d of this.river.reach(k).dapples) {
+        const dx = d.x - v.x, dz = d.z - v.z, zr = dx * v.sin + dz * v.cos;
+        if (zr < 2 || zr > 55) continue;
+        const sc = v.f / zr, sx = v.w / 2 + (dx * v.cos - dz * v.sin) * sc, rx = d.r * sc;
+        if (sx < -rx || sx > v.w + rx) continue;
+        const ry = rx * (v.eye / zr) * 1.2 + 1, a = (0.1 + 0.1 * (0.5 + 0.5 * Math.sin(t * 0.7 + d.tone * 30))) * (0.4 + 0.6 * this.clear(zr));
+        ctx.save();
+        ctx.translate(sx, v.hy + v.eye * sc);
+        ctx.scale(1, ry / rx);
+        const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+        gr.addColorStop(0, css(warm, a));
+        gr.addColorStop(1, css(warm, 0));
+        ctx.fillStyle = gr;
+        ctx.fillRect(-rx, -rx, rx * 2, rx * 2);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
   }
 
   /** Flecks of sky on the water, each lying at a fixed spot so they sweep past as we row. */

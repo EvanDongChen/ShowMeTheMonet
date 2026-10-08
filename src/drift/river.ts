@@ -22,14 +22,20 @@ export interface Placed {
   flat: boolean;
   /** Mirrored left to right. */
   flip: boolean;
+  /** Height of the card's bottom edge above the water, for branches hanging overhead. */
+  elev?: number;
 }
 
 export interface Glint { x: number; z: number; len: number; tone: number; dark: boolean; }
+
+/** A patch of sunlight falling through the leaves onto the water. */
+export interface Dapple { x: number; z: number; r: number; tone: number; }
 
 export interface Reach {
   k: number;
   cards: Placed[];
   glints: Glint[];
+  dapples: Dapple[];
   bridge: Placed | null;
 }
 
@@ -82,13 +88,13 @@ export class River {
     for (const key of this.reaches.keys()) if (Math.abs(key - k) > keep) this.reaches.delete(key);
   }
 
-  private card(kind: CardKind, variant: number, x: number, z: number, scale: number, flip: boolean, flat = false): Placed {
+  private card(kind: CardKind, variant: number, x: number, z: number, scale: number, flip: boolean, flat = false, elev = 0): Placed {
     const spec = CARDS[kind];
-    return { kind, variant, x, z, w: spec.w * scale, h: spec.h * scale, flat, flip };
+    return { kind, variant, x, z, w: spec.w * scale, h: spec.h * scale, flat, flip, elev: elev || undefined };
   }
 
   private build(k: number): Reach {
-    const g = this.g, z0 = k * REACH, cards: Placed[] = [], glints: Glint[] = [];
+    const g = this.g, z0 = k * REACH, cards: Placed[] = [], glints: Glint[] = [], dapples: Dapple[] = [];
     let bridge: Placed | null = null, bz = NaN;
 
     if (this.hasBridge(k)) {
@@ -103,12 +109,14 @@ export class River {
 
     // Banks: rows of cards at increasing distance behind each bank, nearest row lowest. The first
     // row stands in the shallows; the garden is planted thick, as Monet's was.
-    const rows: { step: number; off: [number, number]; pick: (r: number) => CardKind | null; scale: [number, number] }[] = [
+    const rows: { step: number; off: [number, number]; pick: (r: number) => CardKind | null; scale: [number, number]; elev?: [number, number] }[] = [
       { step: 2.4, off: [-1.9, -0.6], pick: (r) => (r < 0.3 ? 'reeds' : r < 0.45 ? 'iris' : null), scale: [0.6, 1] },
       { step: 1.1, off: [-0.3, 0.6], pick: (r) => (r < 0.3 ? 'reeds' : r < 0.5 ? 'iris' : r < 0.75 ? 'grass' : r < 0.9 ? 'flowers' : null), scale: [0.75, 1.25] },
       { step: 2.2, off: [0.8, 3], pick: (r) => (r < 0.6 ? 'shrub' : r < 0.9 ? 'flowers' : 'grass'), scale: [0.8, 1.35] },
       { step: 4.6, off: [1.5, 6], pick: (r) => (r < 0.55 ? 'willow' : r < 0.67 ? 'poplar' : r < 0.9 ? 'shrub' : null), scale: [0.7, 1.1] },
       { step: 11, off: [10, 17], pick: () => 'backdrop', scale: [1, 1.4] },
+      // Branches arching overhead, reaching out over the water.
+      { step: 5, off: [-2.8, 1.2], pick: (r) => (r < 0.85 ? 'canopy' : null), scale: [0.9, 1.5], elev: [1.8, 2.8] },
     ];
     for (const side of [-1, 1]) {
       rows.forEach((row, ri) => {
@@ -116,11 +124,13 @@ export class River {
         for (let i = 0; i < n; i++) {
           const z = z0 + (i + r.random()) * row.step, kind = row.pick(r.random());
           const off = r.range(row.off[0], row.off[1]), scale = r.range(row.scale[0], row.scale[1]);
-          const variant = r.int(0, 99), flip = r.chance(0.5);
-          // Keep the banks clear where a bridge lands, except for its far backdrop.
-          if (!kind || (ri < 4 && Math.abs(z - bz) < 2.5)) continue;
-          const x = this.center(z) + side * (this.half(z) + off + (kind === 'backdrop' || ri === 0 ? 0 : CARDS[kind].w * scale * 0.3));
-          cards.push(this.card(kind, variant % CARDS[kind].variants, x, z, scale, flip));
+          const variant = r.int(0, 99), flip = r.chance(0.5), elev = row.elev ? r.range(row.elev[0], row.elev[1]) : 0;
+          // Keep the banks clear where a bridge lands, except for its far backdrop (and the bridge's own sky).
+          if (!kind || ((ri < 4 || kind === 'canopy') && Math.abs(z - bz) < (kind === 'canopy' ? 5 : 2.5))) continue;
+          // Now and then a branch reaches clear across, so there is something overhead as we pass.
+          const across = kind === 'canopy' && r.chance(0.12);
+          const x = across ? this.center(z) + r.range(-3, 3) : this.center(z) + side * (this.half(z) + off + (kind === 'backdrop' || ri === 0 ? 0 : CARDS[kind].w * scale * 0.3));
+          cards.push(this.card(kind, variant % CARDS[kind].variants, x, z, scale, flip, false, across ? elev + 0.7 : elev));
         }
       });
     }
@@ -161,6 +171,11 @@ export class River {
       glints.push({ x: this.center(z) + u * this.half(z), z, len: r.range(0.3, 1.4), tone: r.random(), dark: r.chance(0.55) });
     }
 
-    return { k, cards, glints, bridge };
+    for (let i = 0; i < 26; i++) {
+      const z = z0 + r.random() * REACH;
+      dapples.push({ x: this.center(z) + r.range(-0.95, 0.95) * this.half(z), z, r: r.range(0.9, 2.6), tone: r.random() });
+    }
+
+    return { k, cards, glints, dapples, bridge };
   }
 }

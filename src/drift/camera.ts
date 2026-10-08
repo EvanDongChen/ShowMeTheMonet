@@ -14,6 +14,8 @@ export interface Controls {
   steer: number;
   /** Where the eye wanders, -1 .. 1, from the pointer. */
   look: number;
+  /** Looking up (+1) or down (-1) from the pointer, so the canopy and the water can both be seen. */
+  pitch: number;
 }
 
 export class Boat {
@@ -23,6 +25,7 @@ export class Boat {
   v = 0;
   turn = 0;
   look = 0;
+  pitch = 0;
   /** Time since the last oar stroke, and a counter the ripples watch for new strokes. */
   sinceStroke = 99;
   strokes = 0;
@@ -72,6 +75,7 @@ export class Boat {
     }
 
     this.look = lerp(this.look, c.look * 0.32, 1 - Math.exp(-3 * dt));
+    this.pitch = lerp(this.pitch, c.pitch, 1 - Math.exp(-3 * dt));
   }
 
   /** The faintest swell, just enough that the water feels like water. */

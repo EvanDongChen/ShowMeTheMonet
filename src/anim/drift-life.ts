@@ -57,7 +57,7 @@ export class DriftLife {
     if (!this.birds.length) {
       // Two loose flocks crossing the sky, in the direction we're facing to begin with.
       for (let g = 0; g < 2; g++) {
-        const az = boat.yaw + (Math.random() - 0.5) * 1.6, el = 0.1 + Math.random() * 0.14, speed = (g ? -1 : 1) * (0.02 + Math.random() * 0.02);
+        const az = boat.yaw + (Math.random() - 0.5) * 1.6, el = 0.2 + Math.random() * 0.14, speed = (g ? -1 : 1) * (0.02 + Math.random() * 0.02);
         for (let i = 0; i < 3 + g; i++) this.birds.push({ az: az + (Math.random() - 0.5) * 0.12, el: el + (Math.random() - 0.5) * 0.04, speed, ph: Math.random() * 10, size: 6 + Math.random() * 6 });
       }
     }
