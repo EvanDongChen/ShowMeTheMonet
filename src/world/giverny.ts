@@ -12,7 +12,7 @@ export const GIVERNY = {
   bridge: { cx: 0.5, span: 1.16, apex: 0.215, end: 0.385, thick: 0.034, railH: 0.085, rails: 2, post: 0.055 },
   waterTop: 0.47,
   willowL: 0.32,
-  willowR: 0.2,
+  willowR: 0,
   reedL: 0.1,
   reedR: 0.12,
   rafts: [

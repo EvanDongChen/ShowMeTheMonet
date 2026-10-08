@@ -126,6 +126,22 @@ export class Garden {
     return Math.max(l, r);
   }
 
+  /**
+   * What grows at (x, y), as weights for weeping willow, dark mottled shrubbery and pale flowering
+   * bush. The edges between stands wander with noise, so the bank reads as separate plantings
+   * rather than bands: willow hanging down the left, dark shrubs behind the bridge, pale bush to the right.
+   */
+  plants(x: number, y: number): [number, number, number] {
+    const wx = x + this.noise.noise2(x / 220, y / 170 + 60) * 140;
+    const willow = this.willow(wx);
+    const start = W * (0.5 + 0.05 * this.noise.noise2(7.7, 3.3));
+    const patch = smoothstep(0.1, 0.55, this.noise.noise2(x / 150, y / 120 + 90));
+    const bush = (1 - willow) * Math.max(smoothstep(start, start + 0.2 * W, wx), patch * 0.7);
+    const shrub = Math.max(0.05, 1 - willow - bush);
+    const sum = willow + bush + shrub;
+    return [willow / sum, shrub / sum, bush / sum];
+  }
+
   /** How thick the reeds grow at x along the side edges, 0..1. */
   reeds(x: number) {
     const l = this.reedL ? 1 - smoothstep(this.reedL * 0.3, this.reedL, x) : 0;
