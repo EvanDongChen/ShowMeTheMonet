@@ -85,6 +85,7 @@
             <canvas id="picture" aria-label="A painting of a Japanese footbridge over a pond of water lilies"></canvas>
             <canvas id="picture-life" aria-hidden="true"></canvas>
             <div class="wet" aria-hidden="true"></div>
+            <div class="flow-cursor" id="flow-cursor" aria-hidden="true"></div>
           </figure>
           <div class="ledge" aria-hidden="true"></div>
           <div class="tag" id="tag">
@@ -151,7 +152,7 @@
           <ellipse class="thumb" cx="78" cy="68" rx="17" ry="13" />
         </svg>
         <div class="dabs" data-for="easel">
-          <button class="dab dab-drift" id="btn-drift" style="--x: 240px; --y: 128px" aria-label="Step inside (D)">
+          <button class="dab dab-drift" id="btn-drift" style="--x: 250px; --y: 136px" aria-label="Step inside (D)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15 Q12 20 21 15 L18 18 Q12 21 6 18Z" /><path d="M12 15 V5 L17 12 Z" class="sail" /></svg>
             <span class="dab-label">step inside</span>
           </button>
@@ -162,6 +163,10 @@
           <button class="dab dab-light" id="btn-light" style="--x: 150px; --y: 100px" aria-label="Choose the light (L)" aria-haspopup="true" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" /></svg>
             <span class="dab-label">choose the light</span>
+          </button>
+          <button class="dab dab-flow" id="btn-flow" style="--x: 205px; --y: 96px" aria-label="Touch the paint (F)" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.4 11.1 L12.9 11.0 L13.5 11.3 L13.9 11.9 L14.2 12.7 L14.0 13.6 L13.4 14.5 L12.5 15.2 L11.2 15.4 L9.8 15.2 L8.6 14.3 L7.6 13.0 L7.3 11.3 L7.6 9.4 L8.6 7.7 L10.3 6.5 L12.5 6.0 L14.8 6.3 L16.9 7.5 L18.5 9.5 L19.3 12.1 L19.1 14.8 L17.8 17.5 L15.5 19.5 L12.5 20.6 L9.3 20.5 L6.2 19.1" /></svg>
+            <span class="dab-label">touch the paint</span>
           </button>
           <button class="dab dab-animate" id="btn-animate" style="--x: 230px; --y: 54px" aria-label="Animate (A)" aria-pressed="true">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 Q7 7 11 10 T19 10 M5 15 Q9 12 13 15 T21 15" /></svg>
@@ -205,7 +210,8 @@
             arch of the footbridge, the willows, the rafts of lilies and the light they're seen in. Monet painted the
             bridge again and again, in every light; <strong>choose the light</strong> and the canvas is painted over in
             another of his series. Seed <button type="button" class="link" id="about-classic">1899</button> paints his
-            own composition.
+            own composition. Switch on <strong>Touch the paint</strong> and the painting turns to wet oil: drag a finger
+            through it and the paint swirls; switch it off and everything is put back.
           </p>
           <p>
             <strong>Step inside</strong> and you pass through the canvas into a rowboat and row on through an endless water garden
@@ -218,6 +224,7 @@
             <dt>D</dt><dd>step inside / step out</dd>
             <dt>A</dt><dd>ripple (animate)</dd>
             <dt>L</dt><dd>change the light</dd>
+            <dt>F</dt><dd>touch the paint (<b>R</b> puts it back)</dd>
             <dt>S</dt><dd>make a postcard</dd>
             <dt>C</dt><dd>copy a link</dd>
             <dt>W A S D</dt><dd>row and steer, in the boat</dd>

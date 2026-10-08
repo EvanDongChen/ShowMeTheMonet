@@ -1,6 +1,7 @@
 // The page: the easel with its painting, the palette of controls, and the drift behind the canvas.
 import './styles.css';
 import { Life } from './anim/life';
+import { Flow } from './anim/flow';
 import { Ambience } from './anim/sound';
 import { css } from './core/color';
 import { clamp } from './core/math';
@@ -41,6 +42,10 @@ let life: Life;
 let drift: Drift | null = null;
 const sound = new Ambience();
 sound.muted = storage('monet-muted') === '1';
+/** "Touch the paint": while on, the finished painting can be smeared like wet oil. */
+let flow: Flow | null = null;
+let flowLast: { x: number; y: number } | null = null;
+const flowCursor = $('flow-cursor');
 let scale = 1;
 let animate = params.get('animate') !== '0' && !reduced;
 let mode: 'easel' | 'drift' = 'easel';
@@ -95,6 +100,7 @@ function layout() {
   // Paint at the size the canvas is shown, in coarse steps so small resizes don't start over.
   const want = clamp(Math.ceil(((pw * dpr) / W) * 4) / 4, 0.5, 2);
   if (want !== scale || picture.width === 0 || !pool) {
+    setFlow(false, true);
     scale = want;
     const px = picturePixels(scale);
     picture.width = px.w;
@@ -113,6 +119,7 @@ function layout() {
 
 function setSeed(next: string, push = true, keepLight = false) {
   next = next.trim().slice(0, 24) || randomSeed();
+  setFlow(false, true);
   if (!keepLight) light = null;
   pool?.dispose();
   seed = next;
@@ -187,6 +194,71 @@ function toggleLights(open = !$('lights').classList.contains('open')) {
   $('btn-light').setAttribute('aria-expanded', String(open));
 }
 
+// ——— Touching the paint ———
+
+/** Where the pointer is on the painting, in picture pixels. */
+function onPicture(e: PointerEvent) {
+  const rect = picture.getBoundingClientRect(), k = picture.width / rect.width;
+  return { x: (e.clientX - rect.left) * k, y: (e.clientY - rect.top) * k, cx: e.clientX - rect.left, cy: e.clientY - rect.top };
+}
+
+function setFlow(on: boolean, quiet = false) {
+  if (on === !!flow) return;
+  if (on) {
+    if (!finished || mode !== 'easel') {
+      toast('the paint is still wet: wait a moment');
+      return;
+    }
+    toggleLights(false);
+    flow = new Flow(picture, (x, y, t) => garden.noise.noise2(x / 130, y / 130 + t * 0.15));
+    flowLast = null;
+    canvasFig.classList.add('flow');
+    canvasFig.style.touchAction = 'none';
+    flowCursor.style.setProperty('--fr', `${flow.r * 2 * (picture.getBoundingClientRect().width / picture.width)}px`);
+    toast('drag a finger through the paint');
+    flow.demo();
+  } else {
+    flow?.stop();
+    flow = null;
+    flowLast = null;
+    canvasFig.classList.remove('flow');
+    canvasFig.style.touchAction = '';
+    flowCursor.classList.remove('on');
+    if (!quiet) toast('the paint is back as it was');
+  }
+  $('btn-flow').setAttribute('aria-pressed', String(!!flow));
+}
+
+canvasFig.addEventListener('pointerdown', (e) => {
+  if (flow) {
+    flowLast = onPicture(e);
+    flow.lift();
+  }
+});
+canvasFig.addEventListener('pointermove', (e) => {
+  if (!flow) return;
+  const p = onPicture(e);
+  flowCursor.style.transform = `translate(${p.cx}px, ${p.cy}px) translate(-50%, -50%)`;
+  flowCursor.classList.add('on');
+  // A mouse smudges as it moves; a finger or a pen has to be down.
+  if (flowLast && (e.pointerType === 'mouse' || e.buttons)) {
+    flow.cancelDemo();
+    flow.stroke(flowLast.x, flowLast.y, p.x, p.y);
+  }
+  flowLast = p;
+});
+canvasFig.addEventListener('pointerup', (e) => {
+  if (e.pointerType !== 'mouse') {
+    flowLast = null;
+    flow?.lift();
+  }
+});
+canvasFig.addEventListener('pointerleave', () => {
+  flowLast = null;
+  flow?.lift();
+  flowCursor.classList.remove('on');
+});
+
 // ——— Drifting ———
 
 let hintTimer = 0;
@@ -204,6 +276,7 @@ function startDrift() {
 function enterDrift(immediate = false) {
   if (mode === 'drift') return;
   mode = 'drift';
+  setFlow(false, true);
   storage('monet-stepped', '1');
   $('invite').classList.remove('show');
   $('btn-drift').classList.remove('pulse');
@@ -335,6 +408,7 @@ $('btn-back').onclick = () => leaveDrift();
 $('btn-pause').onclick = () => togglePause();
 $('btn-animate').onclick = () => setAnimate(!animate);
 $('btn-light').onclick = () => toggleLights();
+$('btn-flow').onclick = () => setFlow(!flow);
 $('btn-save').onclick = () => savePicture();
 $('btn-snap').onclick = () => savePicture();
 $('btn-share').onclick = () => share();
@@ -344,7 +418,7 @@ $('about-classic').onclick = () => {
   setSeed(CLASSIC_SEED);
 };
 canvasFig.addEventListener('click', () => {
-  if (mode === 'easel' && finished) enterDrift();
+  if (mode === 'easel' && finished && !flow) enterDrift();
 });
 addEventListener('pointerdown', (e) => {
   if (!(e.target as HTMLElement).closest('.palette')) toggleLights(false);
@@ -381,7 +455,12 @@ addEventListener('keydown', (e) => {
     case 'KeyD': enterDrift(); break;
     case 'KeyA': setAnimate(!animate); break;
     case 'KeyL': cycleLight(); break;
-    case 'Escape': toggleLights(false); break;
+    case 'KeyF': setFlow(!flow); break;
+    case 'KeyR': flow?.reset(); break;
+    case 'Escape':
+      toggleLights(false);
+      setFlow(false);
+      break;
     case 'KeyS': savePicture(); break;
     case 'KeyC': share(); break;
     case 'KeyI': case 'Slash': $<HTMLDialogElement>('about').showModal(); break;
@@ -430,6 +509,7 @@ function frame(now: number) {
 
   if (mode === 'easel' || app.classList.contains('stepping')) {
     pool.request(tileJobs());
+    flow?.tick(dt);
     if (animate && mode === 'easel') {
       life.update(dt);
       lifeCtx.setTransform(1, 0, 0, 1, 0, 0);
