@@ -30,14 +30,20 @@ src/core/    rng (hash, mulberry32) · noise (Perlin, fbm) · color · math · d
 src/world/   garden.ts (seed → series, bridge, banks, lily rafts) · giverny.ts (seed 1899) · series.ts (palettes)
 src/paint/   plan.ts · tiles.ts · foliage/water/lilies/bridge.ts (easel planners) · cards.ts (drift cutouts)
              pool.ts + worker.ts (painting off the main thread)
-src/drift/   river.ts (the channel, cut into reaches) · camera.ts (the boat) · render.ts (the diorama) · drift.ts
+src/drift/   river.ts (the channel, cut into reaches) · camera.ts (the boat) · render.ts (the diorama)
+             water.ts (the painted water, sky and weave) · drift.ts
 src/anim/    life.ts (easel: trembling light, rings, petals, a dragonfly) · drift-life.ts (oar rings, pollen, petals)
 src/main.ts  the easel, the palette and the loop
 ```
 
 ### The brush
 
-Monet builds a surface from many small touches rather than long flowing strokes. `dab()` paints a tapered comma (a round head thinning into a tail), and `touch()` lays one over a soft, wide scumble with a thin sliver of a neighbouring colour dragged along one side. That sliver is what makes the colour read as *broken* up close and blend at a distance. Every touch in the easel and in every cutout is made this way.
+Monet builds a surface from many small touches rather than long flowing strokes. Each one is the mark of a flat hog-hair brush:
+
+- `flat()` lays the body, with long sides that wander and swell, and ends cut square but ragged.
+- `touch()` adds an occasional thin scumble beneath, streaks of single bristles dragged through the stroke, and a ridge of light along the edge facing the sun, as thick paint catches it.
+
+Neighbouring touches are jittered in colour, and a few are swapped for the series' **accents** (violet in the shade, warm yellow or pink in the light). That makes the colour read as broken up close and blend at a distance. Every touch in the easel and in every cutout is made this way.
 
 ### The easel
 
@@ -48,18 +54,37 @@ The picture is painted in eight tiles, shared out to a pool of workers that pain
 - every dab is seeded from its global grid cell (`hash(seed, layer, i, j)`) and sorted by a global key, so neighbouring tiles agree on each dab's shape, colour and order;
 - each tile is painted with a margin and cropped, since the rasteriser treats paths that cross the canvas edge slightly differently.
 
-Layers, back to front: wash · foliage wall · willows · bank · water (the bank mirrored, darkened and broken into ripples; vertical streaks under the willows) · glints of sky · the bridge's reflection · lily pads · flowers · the bridge · the veil of air · reeds · canvas weave.
+Layers, back to front:
+
+1. wash and a loose underpainting
+2. foliage wall, with sunlit touches
+3. willow fronds fringing the top
+4. bank, with irises and grasses growing along it
+5. water: the bank mirrored and broken into vertical and horizontal strokes
+6. glints of sky
+7. the bridge's reflection
+8. lily pads, each a few horizontal strokes rather than a drawn leaf
+9. flowers
+10. the bridge
+11. a few fronds hanging in front of it
+12. the veil of air
+13. reeds
+14. canvas weave
 
 ### The drift
 
 The drift is a diorama of flat painted cards, made in the spirit of *Shroom and Gloom*'s layered dungeons:
 
-- **The river** is a channel whose centre and width wander with noise, opening into ponds now and then. It is cut into 30 m **reaches**. Each reach's contents are seeded by `hash(seed, reach, slot)`, so a seed's river is always the same: rows of cards behind each bank (reeds and irises at the edge, shrubs, willows and poplars, a far backdrop), rafts of pads with the odd bloom, glints and ripples on the water, and sometimes a footbridge spanning the channel (never two reaches in a row). Reach 0 always has a bridge square ahead, so stepping into the easel lands you in front of one.
+- **The river** is a channel whose centre and width wander with noise, opening into ponds now and then. It is cut into 30 m **reaches**. Each reach's contents are seeded by `hash(seed, reach, slot)`, so a seed's river is always the same: rows of cards behind each bank (reeds standing in the shallows; reeds, irises, grass and flower beds at the edge; shrubs and more flowers; willows and poplars; a far backdrop), rafts of pads with the odd bloom, glints and ripples on the water, and sometimes a footbridge spanning the channel (never two reaches in a row). Reach 0 always has a bridge square ahead, so stepping into the easel lands you in front of one.
 - **Cards** are painted in the workers with the same brush and the seed's palette, from `hash(seed, kind, variant)`: a few variants per kind, streamed nearest first.
 - **Rendering** stands every card up as a billboard, projects it (`scale = f / depth`), sorts far to near and paints them over each other, so nearer flats cover farther ones and slide past faster. Lily pads lie flat: they are squashed by how steeply you look down at them.
   - **Depth** comes from slabs. Each time drawing crosses a slab boundary, a thin veil of the series' air is laid over everything drawn so far, so each layer back is a little paler and mistier.
-  - **The water** is a mirror. Every standing card is drawn again upside down into a half-resolution buffer, which is pasted below the horizon in rippling strips and tinted by the pond.
-- **The boat** gets bursts of momentum from each oar stroke, steers with A/D, drifts on when left alone, and leans gently back toward open water near the banks. It heaves and rolls slightly, and its bow sits at the foot of the view.
+  - **The water** is a mirror, painted over:
+    - Every standing card is drawn again upside down into a half-resolution buffer, which is pasted below the horizon in rippling strips and tinted by the pond.
+    - Over that goes a tile of half-transparent horizontal brushwork, painted once per seed. It is laid on the water plane in perspective one screen row at a time, each row a pattern fill scaled for its depth.
+    - Near the boat the tile is laid at finer world scales, blended across depth, so the strokes stay brush-sized instead of blowing up into smears.
+  - **The sky** above the trees is painted strokes too, and the canvas weave lies faintly over the whole view.
+- **The boat** is the camera, and you never see it. Rowing eases it up to speed and the water slowly takes the speed back. It steers with A/D, glides on when left alone, and leans back toward open water near the banks. It sits steady: a glide, not a bob.
 
 ### Determinism
 

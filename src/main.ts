@@ -373,9 +373,11 @@ function frame(now: number) {
     }
   }
   requestAnimationFrame(frame);
+requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('preload')));
 }
 
 setSeed(seed, !!params.get('seed'));
 setAnimate(animate);
 if (params.get('mode') === 'drift') enterDrift(true);
 requestAnimationFrame(frame);
+requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('preload')));

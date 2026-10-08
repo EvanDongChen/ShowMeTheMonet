@@ -51,6 +51,8 @@ body {
 button { font: inherit; color: inherit; }
 
 #app { position: fixed; inset: 0; }
+/* No transitions until the page has settled, so nothing fades in or out as the styles arrive. */
+.preload, .preload * { transition: none !important; }
 
 /* ——— Brand ——— */
 
