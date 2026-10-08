@@ -87,7 +87,7 @@ function progress() {
 /** Fit the canvas on the easel, and repaint it if the size it needs has changed. */
 function layout() {
   const small = innerWidth <= 720;
-  const maxH = innerHeight * (small ? 0.56 : 0.74), maxW = small ? innerWidth - 28 : Math.min(innerWidth - 400, innerWidth * 0.66);
+  const maxH = innerHeight * (small ? 0.56 : 0.7), maxW = small ? innerWidth - 66 : Math.min(innerWidth - 400, innerWidth * 0.66);
   const pw = Math.round(Math.min(Math.max(maxW, 260), maxH * (W / H), 1150)), ph = Math.round(pw * (H / W));
   document.documentElement.style.setProperty('--pw', `${pw}px`);
   document.documentElement.style.setProperty('--ph', `${ph}px`);

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Show Me the Monet</title>
     <meta name="description" content="An endlessly varied, procedurally painted Bridge over a Pond of Water Lilies, after Claude Monet, that you can row into." />
-    <meta name="theme-color" content="#f2ece0" />
+    <meta name="theme-color" content="#1c2622" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Show Me the Monet" />
     <meta property="og:description" content="A painting that paints itself, in five lights, and that you can row into." />
@@ -23,7 +23,6 @@
   <body>
     <div id="app" data-mode="easel" class="preload">
       <div class="studio" aria-hidden="true">
-        <div class="window-light"><i></i><i></i><i></i><i></i></div>
         <div class="leaves">
           <i style="--x: 78%; --y: -6%; --s: 260px; --r: -18deg; --d: 0s"></i>
           <i style="--x: 90%; --y: 10%; --s: 200px; --r: 24deg; --d: -3s"></i>
@@ -77,6 +76,7 @@
 
       <main id="easel-view" aria-label="The easel">
         <div class="easel" id="easel">
+          <div class="picture-light" aria-hidden="true"></div>
           <div class="leg leg-l" aria-hidden="true"></div>
           <div class="leg leg-r" aria-hidden="true"></div>
           <div class="leg leg-back" aria-hidden="true"></div>

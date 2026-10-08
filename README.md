@@ -2,7 +2,7 @@
 
 An endlessly varied, procedurally painted *Bridge over a Pond of Water Lilies* (after Claude Monet, 1899), with a rowboat you can take into the painting.
 
-- **Easel**: click the painting to step into it, or choose the light and every canvas is painted over in another of Monet's series. Every seed paints its own variation of the Japanese footbridge over the lily pond, in one of Monet's series of light: Harmony in Green, Harmony in Rose, Morning Mist, Evening Light or Autumn Pond. Seed `1899` paints Monet's own composition.
+- **The gallery**: the picture hangs in a gilt frame on a dark wall, under a brass picture light, with a museum label beneath it. Click the painting to step into it, or choose the light and every canvas is painted over in another of Monet's series. Every seed paints its own variation of the Japanese footbridge over the lily pond, in one of Monet's series of light: Harmony in Green, Harmony in Rose, Morning Mist, Evening Light or Autumn Pond. Seed `1899` paints Monet's own composition.
 - **Drift**: step through the canvas into a rowboat and row on through an endless water garden built of painted cutouts. Willows, reeds, irises, footbridges and lily pads stand at different depths like the flats of a lit diorama, and slide past one another as you go. Branches arch overhead, the hour turns as you row (a golden afternoon, a violet dusk with fireflies, a pink dawn mist), and there is always something to row toward: a boat tied up at the bank, a stone lantern, a footbridge, a sunlit clearing. Quiet procedural sound comes with it (`M` mutes).
 
 ```sh
