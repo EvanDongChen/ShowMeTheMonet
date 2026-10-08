@@ -278,7 +278,7 @@ button { font: inherit; color: inherit; }
 .canvas.ready { cursor: pointer; }
 .canvas.ready:hover #picture { filter: brightness(1.04) saturate(1.05); }
 
-/* The live pond: the pointer is a ring of light, and a click plants rather than steps in. */
+/* The live pond: the pointer is a ring of light, and moving it through the pond tends it. */
 .canvas.live.ready { cursor: none; }
 .canvas.live.ready:hover #picture { filter: none; }
 .tend-cursor {

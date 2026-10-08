@@ -1,11 +1,11 @@
 // The easel picture, alive, and a pond to tend. Light trembles on the open water, rings spread where
 // something touched the surface, petals drift down from the willows, a dragonfly crosses the pond.
 //
-// And the person can tend it: a click on the water plants a water lily that grows from a bud into a
-// bloom (with its own pad, painted in the same strokes as the rest), a click in the leaves shakes
-// petals loose that fall and float away, and dragging scatters petals along the way. Planted lilies
-// send out the odd ring, glow as the cursor nears them, and call the dragonfly to hover over them.
-// What has been planted is kept for the next visit, per canvas.
+// And the person can tend it, just by moving through it: the cursor drifting over the water plants
+// water lilies as it goes, each growing from a bud into a bloom (with its own pad, painted in the same
+// strokes as the rest), and scatters petals that float away; passing through the leaves shakes petals
+// loose. Planted lilies send out the odd ring, glow softly as the cursor nears them, and call the
+// dragonfly to hover over them. What has been planted is kept for the next visit, per canvas.
 //
 // Drawn on its own canvas over the finished picture; never changes what a seed paints.
 import { css, lighten, type RGB } from '../core/color';
@@ -44,6 +44,11 @@ export class Life {
   private flowers: Pad[];
   private cur = { x: 0, y: 0, on: false };
   private sprinkleAt = 0;
+  /** How far the cursor has travelled since it last planted something, and when it may next. */
+  private travelled = 0;
+  private plantAt = 0;
+  /** How near the cursor is, eased in and out so glows swell and fade rather than switch. */
+  private presence = 0;
   /** Is the pond being tended (the pointer is over the painting and the mode is on)? */
   tending = false;
 
@@ -126,20 +131,32 @@ export class Life {
 
   /** Where the cursor is, in painting units. */
   pointer(x: number, y: number) {
-    this.cur.x = x;
-    this.cur.y = y;
-    this.cur.on = true;
+    const c = this.cur, d = c.on ? Math.hypot(x - c.x, y - c.y) : 0;
+    c.x = x;
+    c.y = y;
+    c.on = true;
+    if (!this.tending || d < 0.5) return;
+    // Moving through the pond tends it: petals scatter as you go, and a lily is planted every so far.
+    this.sprinkle(x, y);
+    this.travelled += d;
+    const water = this.onWater(x, y);
+    if (this.t >= this.plantAt && this.travelled > (water ? 150 : 230)) {
+      this.tend(x, y);
+      this.travelled = 0;
+      this.plantAt = this.t + 0.7;
+    }
   }
 
   pointerOut() {
     this.cur.on = false;
+    this.travelled = 0;
   }
 
   private onWater(x: number, y: number) {
     return y > this.g.waterLine(x) + 10;
   }
 
-  /** A click: on the water it plants a lily, in the leaves it shakes petals loose. */
+  /** On the water this plants a lily; in the leaves it shakes petals loose. */
   tend(x: number, y: number) {
     const g = this.g;
     if (this.onWater(x, y)) {
@@ -158,13 +175,13 @@ export class Life {
     if (this.fly) this.fly.vx = (this.fly.x < x ? -1 : 1) * 220;
   }
 
-  /** Dragging scatters petals: onto the water where it floats, loose from the leaves where it falls. */
+  /** Moving scatters petals: onto the water where they float, loose from the leaves where they fall. */
   sprinkle(x: number, y: number) {
     if (this.t < this.sprinkleAt) return;
-    this.sprinkleAt = this.t + 0.09;
+    this.sprinkleAt = this.t + 0.16;
     const water = this.onWater(x, y);
     this.petal(x + (Math.random() - 0.5) * 24, y + (Math.random() - 0.5) * 12, water);
-    if (water && Math.random() < 0.35) this.rings.push({ x, y, age: 0, life: 1.6, size: lerp(12, 38, this.g.depth(y)) });
+    if (water && Math.random() < 0.25) this.rings.push({ x, y, age: 0, life: 1.6, size: lerp(12, 38, this.g.depth(y)) });
   }
 
   private petal(x: number, y: number, landed: boolean) {
@@ -178,6 +195,7 @@ export class Life {
   update(dt: number) {
     const g = this.g;
     this.t += dt;
+    this.presence += ((this.tending && this.cur.on ? 1 : 0) - this.presence) * Math.min(1, dt * 3);
     if (Math.random() < dt * 0.7) {
       const x = Math.random() * W, y = lerp(g.waterTop + 10, H - 10, Math.random());
       if (!this.onPad(x, y)) this.rings.push({ x, y, age: 0, life: 3 + Math.random() * 2, size: lerp(14, 60, g.depth(y)) });
@@ -302,14 +320,16 @@ export class Life {
 
     // Blooms glow as the cursor nears them: the painted ones, and the ones planted.
     const c = this.cur;
-    if (this.tending && c.on) {
+    if (this.presence > 0.02) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const glow = (x: number, y: number, w: number, flower: number) => {
-        const near = Math.exp(-((x - c.x) ** 2 + (y - c.y) ** 2) / (140 * 140));
-        if (near < 0.05) return;
-        const R = Math.max(18, w * 0.7) * (1 + 0.6 * near), col = lighten(s.flower[flower], 0.3), gr = ctx.createRadialGradient(x, y, 0, x, y, R);
-        gr.addColorStop(0, css(col, 0.55 * near));
+        // A soft, wide swell that rises smoothly as the cursor nears, so nothing flares.
+        const near = Math.exp(-((x - c.x) ** 2 + (y - c.y) ** 2) / (170 * 170)) * this.presence;
+        if (near < 0.03) return;
+        const R = Math.max(22, w * 0.9) * (1 + 0.35 * near), col = lighten(s.flower[flower], 0.2), gr = ctx.createRadialGradient(x, y, 0, x, y, R);
+        gr.addColorStop(0, css(col, 0.22 * near));
+        gr.addColorStop(0.5, css(col, 0.08 * near));
         gr.addColorStop(1, css(col, 0));
         ctx.fillStyle = gr;
         ctx.fillRect(x - R, y - R, R * 2, R * 2);

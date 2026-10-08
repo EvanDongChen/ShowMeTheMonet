@@ -206,7 +206,7 @@ function tendOut() {
 /** The pond is live (the A button): the painting moves, and it can be tended. Switching it off stills it. */
 function toggleLive() {
   setAnimate(!animate);
-  toast(animate ? 'the pond is live: click the water to plant a lily, drag to scatter petals' : 'the pond is still');
+  toast(animate ? 'the pond is live: move through it to plant lilies and scatter petals' : 'the pond is still');
 }
 
 canvasFig.addEventListener('pointermove', (e) => {
@@ -216,8 +216,6 @@ canvasFig.addEventListener('pointermove', (e) => {
   tendCursor.classList.add('on');
   life.tending = true;
   life.pointer(p.x, p.y);
-  // Dragging (a held button, a finger, a pen) scatters petals along the way.
-  if (e.buttons) life.sprinkle(p.x, p.y);
 });
 canvasFig.addEventListener('pointerleave', tendOut);
 canvasFig.addEventListener('pointerup', (e) => {
@@ -391,22 +389,8 @@ $('about-classic').onclick = () => {
   $<HTMLDialogElement>('about').close();
   setSeed(CLASSIC_SEED);
 };
-// A click tends the pond while it is live (plants a lily on the water, shakes petals from the leaves);
-// a double-click, or the boat on the palette, steps inside. With the pond still, one click steps inside.
-let downAt = { x: 0, y: 0 };
-canvasFig.addEventListener('pointerdown', (e) => {
-  downAt = { x: e.clientX, y: e.clientY };
-});
-canvasFig.addEventListener('click', (e) => {
-  if (mode !== 'easel' || !finished) return;
-  // The end of a drag is not a click: it only scattered petals.
-  if (animate && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return;
-  if (animate) {
-    const p = onPaint(e);
-    life.tend(p.x, p.y);
-  } else enterDrift();
-});
-canvasFig.addEventListener('dblclick', () => {
+// Tending needs no clicking: moving through the pond does it. A click steps inside.
+canvasFig.addEventListener('click', () => {
   if (mode === 'easel' && finished) enterDrift();
 });
 addEventListener('pointerdown', (e) => {
