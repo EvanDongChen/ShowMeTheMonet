@@ -131,19 +131,28 @@ export class River {
       cards.push(this.card('willow', 1, this.center(9) + this.half(9) + 1.4, 9, 1.05, true));
     }
 
-    // Rafts of lilies, mostly drifting near the banks.
+    // Rafts of lilies drifting all over the pond, thickest near the banks, with open water between.
     const r = g.rng(0x7e4c, k, 0x1a9);
-    for (let c = r.int(4, 8); c > 0; c--) {
-      const cz = z0 + r.random() * REACH, u = (r.chance(0.75) ? r.range(0.45, 0.95) : r.range(-0.4, 0.4)) * (r.chance(0.5) ? 1 : -1);
-      const half = this.half(cz), cx = this.center(cz) + u * half, rad = r.range(1.2, 4);
-      for (let n = r.int(10, 30); n > 0; n--) {
+    for (let c = r.int(15, 23); c > 0; c--) {
+      const cz = z0 + r.random() * REACH, u = (r.chance(0.55) ? r.range(0.4, 0.95) : r.range(-0.8, 0.8)) * (r.chance(0.5) ? 1 : -1);
+      const half = this.half(cz), cx = this.center(cz) + u * half, rad = r.range(1.5, 5);
+      for (let n = r.int(18, 46); n > 0; n--) {
         const a = r.random() * Math.PI * 2, d = Math.sqrt(r.random()) * rad;
         const x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d * 1.4;
-        const size = r.range(0.5, 1.15), variant = r.int(0, CARDS.pad.variants - 1), bloom = r.chance(0.3), bv = r.int(0, 99);
+        const size = r.range(0.45, 1.3), variant = r.int(0, CARDS.pad.variants - 1), bloom = r.chance(0.3), bv = r.int(0, 99);
         if (Math.abs(x - this.center(z)) > this.half(z) - 0.3 || Math.abs(z - bz) < 1) continue;
         cards.push(this.card('pad', variant, x, z, size, r.chance(0.5), true));
         if (bloom) cards.push(this.card('bloom', bv % CARDS.bloom.variants, x, z + 0.01, size, false));
       }
+    }
+
+    // Single pads strewn over the open water, so the near stretch is never bare.
+    for (let n = 50; n > 0; n--) {
+      const z = z0 + r.random() * REACH, x = this.center(z) + r.range(-0.9, 0.9) * this.half(z);
+      const size = r.range(0.4, 1), variant = r.int(0, CARDS.pad.variants - 1), bloom = r.chance(0.2), bv = r.int(0, 99), flip = r.chance(0.5);
+      if (Math.abs(z - bz) < 1) continue;
+      cards.push(this.card('pad', variant, x, z, size, flip, true));
+      if (bloom) cards.push(this.card('bloom', bv % CARDS.bloom.variants, x, z + 0.01, size, false));
     }
 
     // Glints of sky on the open water.

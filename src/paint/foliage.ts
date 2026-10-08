@@ -74,7 +74,14 @@ function leaf(g: Garden, rng: Rng, x: number, y: number, base: number, light: nu
 }
 
 /** The touch itself, for a given planting. `sway` is a slow noise field so neighbouring touches agree. */
-export function plantTouch(s: Series, kind: number, rng: Rng, base: number, light: number, jitter: number, sway: number): Leaf {
+export function plantTouch(s: Series, kind: number, rng: Rng, base: number, light: number, jitter: number, sway: number, contrast = 1): Leaf {
+  const t = plantStroke(s, kind, rng, base, light, jitter, sway);
+  // Big strokes (the drift's cards) read as blotches if every accent is at full strength.
+  if (contrast < 1) t.col = mix(t.col, ramp(s.foliage, light), 1 - contrast);
+  return t;
+}
+
+function plantStroke(s: Series, kind: number, rng: Rng, base: number, light: number, jitter: number, sway: number): Leaf {
   const roll = rng.random(), jit = rng.range(-1, 1), len0 = size(rng, base), wr = rng.range(0.3, 0.6), aj = rng.range(-1, 1);
   const f = (t: number) => ramp(s.foliage, t);
   const l = light + [0, -0.22, 0.14][kind] + jit * jitter;

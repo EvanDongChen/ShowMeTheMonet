@@ -29,7 +29,7 @@ export const CARDS: Record<CardKind, CardSpec> = {
   poplar: { w: 3.6, h: 12, variants: 3, ppm: 34 },
   backdrop: { w: 20, h: 9, variants: 4, ppm: 26 },
   bridge: { w: 16, h: 4.4, variants: 2, ppm: 60 },
-  pad: { w: 1, h: 0.4, variants: 8, ppm: 96 },
+  pad: { w: 1, h: 0.4, variants: 8, ppm: 144 },
   bloom: { w: 0.55, h: 0.4, variants: 6, ppm: 160 },
 };
 
@@ -78,7 +78,7 @@ function mass(c: CardCtx, sp: number, size: number, inside: (x: number, y: numbe
         const l = light(px, py) + rng.range(-0.12, 0.12) + (pass ? 0.12 : -0.05);
         if (kind) {
           // Each planting has its own brushwork: hanging willow, mottled dark shrub, pale feathery bush.
-          const t = plantTouch(c.s, kind(px, py), rng, sz, l, 0.1, lean(px, py) - Math.PI / 2);
+          const t = plantTouch(c.s, kind(px, py), rng, sz, l, 0.1, lean(px, py) - Math.PI / 2, 0.55);
           touch(ctx, rng, px, py, t.len, t.wide, t.ang, t.col, 0.9);
         } else {
           touch(ctx, rng, px, py, sz * rng.range(0.7, 1.3), sz * rng.range(0.35, 0.55), lean(px, py) + rng.range(-0.4, 0.4), ramp(ramp0, l), 0.9);
