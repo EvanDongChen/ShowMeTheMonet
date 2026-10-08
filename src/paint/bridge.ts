@@ -29,7 +29,7 @@ export function planBridge(p: TilePlan) {
       // The deck: a rust-violet shadow line beneath, green body in broken strokes, warm light on top.
       flat(ctx, rng, x, deck + b.thick * 1.08, rng.range(14, 22), 2.6, ang, mix(s.accent[2], darken(shade, 0.3), 0.55), 0.8);
       for (const t of [0.85, 0.5, 0.15]) {
-        const col = t > 0.6 ? mix(shade, ramp(s.bridge, 0.3), rng.random()) : ramp(s.bridge, (1 - t) * 0.8 + rng.range(-0.15, 0.1));
+        const col = t > 0.6 ? mix(shade, ramp(s.bridge, 0.3), rng.random()) : ramp(s.bridge, (1 - t) * 0.6 + rng.range(-0.15, 0.1));
         touch(ctx, rng, x + rng.range(-3, 3), deck + b.thick * t, rng.range(15, 24), b.thick * rng.range(0.34, 0.46), ang + rng.range(-0.07, 0.07), rng.chance(0.12) ? mix(s.accent[4], col, 0.5) : col, 0.93);
       }
       if (rng.chance(0.6)) touch(ctx, rng, x, deck - 0.5, rng.range(8, 16), 3.4, ang, warm, 0.85);
@@ -41,8 +41,8 @@ export function planBridge(p: TilePlan) {
         const chalk = mix(ramp(s.bridge, rng.range(0.8, 1)), s.accent[rng.chance(0.5) ? 0 : 1], rng.range(0.12, 0.34));
         const body = top ? mix(ramp(s.bridge, rng.range(0.4, 0.6)), chalk, 0.35) : chalk;
         flat(ctx, rng, x + rng.range(-3, 3), ry + 4.5, rng.range(14, 22), 2.4, ang, underline, 0.7, rng.range(-0.06, 0.06));
-        touch(ctx, rng, x, ry, rng.range(15, 24), rng.range(7, 10), ang + rng.range(-0.06, 0.06), body, 0.94);
-        if (rng.chance(0.7)) touch(ctx, rng, x + rng.range(-5, 5), ry - 2.4, rng.range(8, 16), 3.2, ang, rng.chance(0.35) ? warm : lighten(chalk, 0.12), 0.8);
+        touch(ctx, rng, x, ry, rng.range(15, 24), rng.range(9, 13), ang + rng.range(-0.06, 0.06), body, 0.94);
+        if (rng.chance(0.7)) touch(ctx, rng, x + rng.range(-5, 5), ry - 3.2, rng.range(8, 16), 3.6, ang, rng.chance(0.35) ? warm : lighten(chalk, 0.12), 0.8);
         if (rng.chance(0.3)) flat(ctx, rng, x + rng.range(-6, 6), ry + 2.4, rng.range(6, 12), 2.4, ang, mix(ramp(s.bridge, 0.5), s.accent[4], 0.4), 0.7);
       }
     });
@@ -55,7 +55,7 @@ export function planBridge(p: TilePlan) {
     const x = b.cx + m * b.post, deck = g.deckY(x);
     if (!near(p, x, deck - b.railH / 2, 12, b.railH)) continue;
     const top: Pt = [x + rng.range(-1.5, 1.5), deck - b.railH - 5], pts: Pt[] = [[x, deck + 2], top];
-    const wide = rng.range(7, 10), col = mix(ramp(s.bridge, rng.range(0.55, 0.8)), s.accent[0], 0.2);
+    const wide = rng.range(9, 13), col = mix(ramp(s.bridge, rng.range(0.55, 0.8)), s.accent[0], 0.2);
     push(p, L.BRIDGE, key, (ctx) => {
       // Chalky core, a violet shadow down the far side, a bright edge on the near one.
       dabLine(ctx, rng, [[x + wide * 0.3, deck + 2], [top[0] + wide * 0.3, top[1]]], wide * 0.5, darken(mix(col, s.accent[0], 0.45), 0.05), 0.8, 11);

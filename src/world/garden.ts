@@ -138,7 +138,8 @@ export class Garden {
    * the middle where light falls through, darker in the pockets and just above the water.
    */
   foliageLight(x: number, y: number) {
-    const n = this.noise.fbm(x / 260, y / 190, 4) + this.noise.noise2(x / 60, y / 60 + 9) * 0.18;
+    // Big masses, then bush-sized clumps with dark pockets between them, then leaf-sized dapple.
+    const n = this.noise.fbm(x / 260, y / 190, 4) + this.noise.noise2(x / 85, y / 70 + 21) * 0.26 + this.noise.noise2(x / 60, y / 60 + 9) * 0.18;
     const sun = 0.18 * (1 - Math.abs(x / W - 0.5) * 1.4) - 0.22 * smoothstep(this.waterTop - 160, this.waterTop, y);
     return 0.5 + n * 0.75 + sun;
   }

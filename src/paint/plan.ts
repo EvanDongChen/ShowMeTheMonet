@@ -10,7 +10,7 @@ import type { Garden } from '../world/garden';
 export type Op = (ctx: Ctx) => void;
 
 export const L = {
-  WASH: 0, UNDER: 0.5, FOLIAGE_BASE: 1, FOLIAGE: 2, FOLIAGE_LIGHT: 2.5, WILLOW: 3, BANK: 4, BANK_PLANTS: 4.5,
+  WASH: 0, UNDER: 0.5, FOLIAGE_BASE: 1, FOLIAGE: 2, FOLIAGE_LIGHT: 2.5, FOLIAGE_FLECK: 2.7, WILLOW: 3, BANK: 4, BANK_PLANTS: 4.5,
   WATER_BASE: 5, WATER: 6, WATER_DETAIL: 6.5, GLINT: 7, BRIDGE_REFLECT: 8,
   PAD: 9, FLOWER: 10, BRIDGE_SHADE: 11, BRIDGE: 12, WILLOW_FRONT: 12.5, VEIL: 13, REED: 14,
 } as const;

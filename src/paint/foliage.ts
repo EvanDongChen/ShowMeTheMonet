@@ -69,8 +69,8 @@ export function planFoliage(p: TilePlan) {
       const x = (i + rng.random()) * big, y = (j + rng.random()) * big;
       if (y > g.waterLine(x) + 2 || !near(p, x, y, 45)) continue;
       const light = g.foliageLight(x, y) - 0.2;
-      const col = accent(rng, s, ramp(s.foliage, light + rng.range(-0.12, 0.12)), 0.1, light);
-      const len = size(rng, 34), wide = len * rng.range(0.35, 0.6), ang = lean(p, x, y) + rng.range(-0.6, 0.6);
+      const col = accent(rng, s, ramp(s.foliage, light + rng.range(-0.12, 0.12)), 0.16, light);
+      const w = g.willow(x), len = size(rng, 34) * (1 + w * 0.8), wide = len * rng.range(0.35, 0.6) * (1 - w * 0.4), ang = lean(p, x, y) + rng.range(-0.6, 0.6) * (1 - w * 0.5);
       push(p, L.FOLIAGE_BASE, key, (ctx) => touch(ctx, rng, x, y, len, wide, ang, col, 0.9));
     }
   }
@@ -84,8 +84,8 @@ export function planFoliage(p: TilePlan) {
       const light = g.foliageLight(x, y);
       // Only some of the cells get a touch, more of them where the sun lands.
       if (!rng.chance(0.3 + light * 0.45)) continue;
-      const col = accent(rng, s, ramp(s.foliage, light + rng.range(-0.2, 0.2)), 0.07, light);
-      const len = size(rng, 15), wide = len * rng.range(0.3, 0.55), ang = lean(p, x, y) + rng.range(-0.5, 0.5);
+      const col = accent(rng, s, ramp(s.foliage, light + rng.range(-0.2, 0.2)), 0.13, light);
+      const w = g.willow(x), len = size(rng, 15) * (1 + w * 0.9), wide = len * rng.range(0.3, 0.55) * (1 - w * 0.45), ang = lean(p, x, y) + rng.range(-0.5, 0.5) * (1 - w * 0.5);
       push(p, L.FOLIAGE, key, (ctx) => touch(ctx, rng, x, y, len, wide, ang, col, 0.9));
     }
   }
@@ -98,9 +98,25 @@ export function planFoliage(p: TilePlan) {
       const x = (i + rng.random()) * hi, y = (j + rng.random()) * hi;
       const light = g.foliageLight(x, y);
       if (y > g.waterLine(x) - 6 || light < 0.62 || !rng.chance((light - 0.6) * 1.6) || !near(p, x, y, 14)) continue;
-      const col = accent(rng, s, ramp(s.foliage, light + rng.range(0.05, 0.3)), 0.14, 1);
+      const col = accent(rng, s, ramp(s.foliage, light + rng.range(0.05, 0.3)), 0.2, 1);
       const len = size(rng, 9), ang = lean(p, x, y) + rng.range(-0.8, 0.8);
       push(p, L.FOLIAGE_LIGHT, key, (ctx) => touch(ctx, rng, x, y, len, len * rng.range(0.4, 0.7), ang, col, 0.95));
+    }
+  }
+
+  // Flecks of colour: small dabs of pale yellow, pink and lilac caught in the leaves, thickest in
+  // the sunny clumps, as in the bright bushes to the right of Monet's bridge.
+  const fl = 7, c3 = cells(p, fl);
+  for (let i = c3.i0; i <= c3.i1; i++) {
+    for (let j = c3.j0; j <= c3.j1; j++) {
+      const { rng, key } = cellRng(p, L.FOLIAGE_FLECK, i, j);
+      const x = (i + rng.random()) * fl, y = (j + rng.random()) * fl;
+      const light = g.foliageLight(x, y), clump = g.noise.noise2(x / 75, y / 60 + 5);
+      if (y > g.waterLine(x) - 8 || !rng.chance(smoothstep(0.35, 0.8, light) * (0.1 + 0.5 * smoothstep(-0.1, 0.5, clump))) || !near(p, x, y, 12)) continue;
+      const roll = rng.random();
+      const col = roll < 0.45 ? mix(ramp(s.foliage, 1), s.accent[3], rng.range(0.1, 0.5)) : roll < 0.65 ? mix(s.accent[2], ramp(s.foliage, 0.9), 0.4) : roll < 0.8 ? mix(s.accent[1], ramp(s.foliage, 0.9), 0.5) : ramp(s.foliage, rng.range(0.75, 1));
+      const len = size(rng, 8), ang = lean(p, x, y) + rng.range(-1, 1);
+      push(p, L.FOLIAGE_FLECK, key, (ctx) => touch(ctx, rng, x, y, len, len * rng.range(0.4, 0.7), ang, col, 0.92));
     }
   }
 
@@ -174,13 +190,16 @@ function planBankPlants(p: TilePlan) {
     const x = (i + rng.random()) * sp, base = g.waterLine(x) + rng.range(-3, 3);
     // Thicker in clumps, thinner between them.
     if (!rng.chance(0.35 + 0.6 * smoothstep(-0.3, 0.4, g.noise.noise2(x / 70, 9.1)))) continue;
-    const n = rng.int(2, 5), tall = rng.range(18, 62), flower = rng.chance(0.22) ? rng.pick(blooms) : null;
-    if (!near(p, x, base - tall / 2, 30, tall / 2 + 10)) continue;
+    const clump = smoothstep(0.1, 0.5, g.noise.noise2(x / 90, 3.3));
+    const n = rng.int(3, 7), tall = 14 + Math.pow(rng.random(), 1.8) * (50 + clump * 70), flower = rng.chance(0.22) ? rng.pick(blooms) : null;
+    if (!near(p, x, base - tall / 2, 40, tall / 2 + 10)) continue;
     const blades: [Pt[], RGB, number][] = [];
     for (let k = 0; k < n; k++) {
       const h = tall * rng.range(0.5, 1), lean = rng.range(-0.4, 0.4), bx = x + rng.range(-5, 5);
-      blades.push([[[bx, base], [bx + Math.sin(lean) * h * 0.5, base - h * 0.55], [bx + Math.sin(lean) * h, base - h]],
-        accent(rng, s, ramp(s.reed, rng.range(0.15, 1)), 0.08, 0.5), rng.range(2.4, 4.2)]);
+      // Blades rise straight, then arch over toward their tips, like a fountain of grass.
+      const out = (k - (n - 1) / 2) / n * 1.6 + lean * 0.5;
+      blades.push([[[bx, base], [bx + out * h * 0.18, base - h * 0.6], [bx + out * h * 0.6, base - h * 0.92], [bx + out * h * 0.95, base - h * 0.82]],
+        accent(rng, s, ramp(s.reed, rng.range(0.15, 1)), 0.16, 0.5), rng.range(2.4, 4.2)]);
     }
     const fx = x + rng.range(-4, 4), fy = base - tall * rng.range(0.6, 0.95);
     push(p, L.BANK_PLANTS, key, (ctx) => {
