@@ -17,11 +17,13 @@ Plain TypeScript, Vite and canvas 2D, with no runtime dependencies. The build is
 
 | | Easel | Drift |
 | --- | --- | --- |
-| Palette | new canvas, **choose the light**, **step inside**, ripple, make a postcard, share, about | to the easel, rest the oars, postcard |
-| Keys | `N` new · `D` drift in · `A` animate · `L` change the light · `S` postcard · `C` copy link · `I` about | `W`/`↑` row · `S`/`↓` back-paddle · `A` `D` steer · `Space` rest · `M` sound · `P` postcard · `Esc` step out |
+| Palette | new canvas, **choose the light**, **step inside**, **live pond**, make a postcard, share, about | to the easel, rest the oars, postcard |
+| Keys | `N` new · `D` drift in · `A` live pond · `L` change the light · `S` postcard · `C` copy link · `I` about | `W`/`↑` row · `S`/`↓` back-paddle · `A` `D` steer · `Space` rest · `M` sound · `P` postcard · `Esc` step out |
 | Pointer | click the painting to step in; type a seed on the tag under the easel | the eye follows the mouse, left and right and up (into the canopy) and down (at the water); on touch, hold to row and drag to steer |
 
 URL parameters: `?seed=…`, `&light=green|rose|mist|evening|autumn` to choose the series, `&mode=drift` to start in the boat, `&animate=0` to keep the easel still.
+
+**The live pond** (the waves on the palette, or `A`) is one switch for two things. The painting moves: the whole of it breathes, since the finished picture is laid over itself in thin strips nudged by travelling waves (willows and leaves sway in a gusting wind, reflections shimmer, the lily pads bob, more the nearer they are, and the bridge only trembles, so the plants in front of and behind it still sway), and it answers the cursor with a little physics: ripples spread over the water from wherever it passes, and a grid of springs under the painting lets it shove the leaves, reeds and willows the way it is going, so they swing back and settle, dragging their neighbours with them), while light trembles on the open water, rings spread, petals drift down from the willows and a dragonfly crosses. And it can be tended, with no clicking: move the cursor through the pond (or drag a finger) and water lilies are planted on the water as you go, each growing from a bud into a bloom (painted in the same strokes as the rest, larger than the painted ones so it reads as yours); petals scatter and float away, and passing through the leaves shakes more loose. Planted lilies send out the odd ring, and call the dragonfly to hover over the newest. What you plant is kept per canvas and light in `localStorage`, `R` clears it, and a postcard carries it. A click steps inside. Switch the pond off and the painting is perfectly still.
 
 **Choosing the light** repaints the same seed in another series (the composition stays, the palette and air change), and the choice travels in the link. **Postcards** frame the finished canvas, or the view from the boat, in a paper border with a handwritten caption (the series, the reach rowed and the hour) and the seed. In the boat, a title card names the place as you slip in, and landmarks are whispered as they come into view.
 

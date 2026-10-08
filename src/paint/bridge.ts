@@ -18,13 +18,6 @@ export function planBridge(p: TilePlan) {
     const x = (i + rng.random()) * sp, deck = g.deckY(x), ang = slope(x);
     if (!near(p, x, deck - b.railH / 2, 34, b.railH + b.thick * 3)) continue;
 
-    // Shade cast under the deck onto the bank behind.
-    push(p, L.BRIDGE_SHADE, key, (ctx) => {
-      for (let k = 0; k < 2; k++) {
-        flat(ctx, rng, x + rng.range(-4, 4), deck + b.thick * rng.range(1, 2.6), rng.range(16, 28), b.thick * 0.8, ang, darken(mix(ramp(s.foliage, 0.05), s.accent[0], 0.3), 0.2), 0.3);
-      }
-    });
-
     push(p, L.BRIDGE, 1 + key, (ctx) => {
       // The deck: a rust-violet shadow line beneath, green body in broken strokes, warm light on top.
       flat(ctx, rng, x, deck + b.thick * 1.08, rng.range(14, 22), 2.6, ang, mix(s.accent[2], darken(shade, 0.3), 0.55), 0.8);

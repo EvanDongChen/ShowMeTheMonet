@@ -129,7 +129,7 @@ export class PaintPool {
       this.onChange(id);
     };
     if (job.type === 'tile') {
-      paintTile(this.local!, job.t, job.scale, (c, progress, done) => finish(c as unknown as HTMLCanvasElement, progress, done), 6, 0, 10);
+      paintTile(this.local!, job.t, job.scale, (c, progress, done) => finish(c as unknown as HTMLCanvasElement, progress, done), 6, 0, 10, job.layer);
     } else {
       // Defer so a burst of card requests doesn't block the frame that asked for them.
       setTimeout(() => finish(paintCard(this.local!, job.kind, job.variant, job.ppm) as unknown as HTMLCanvasElement, 1, true), 0);

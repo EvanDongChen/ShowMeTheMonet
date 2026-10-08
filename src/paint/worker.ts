@@ -3,9 +3,9 @@
 import { Garden } from '../world/garden';
 import type { SeriesName } from '../world/series';
 import { paintCard, type CardKind } from './cards';
-import { paintTile } from './tiles';
+import { paintTile, type TileLayer } from './tiles';
 
-export type Job = { type: 'tile'; t: number; scale: number } | { type: 'card'; kind: CardKind; variant: number; ppm: number };
+export type Job = { type: 'tile'; t: number; scale: number; layer?: TileLayer } | { type: 'card'; kind: CardKind; variant: number; ppm: number };
 
 export type ToWorker = { type: 'init'; seed: string; light: SeriesName | null } | { type: 'job'; id: string; job: Job };
 export type FromWorker =
@@ -29,7 +29,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       await paintTile(garden, job.t, job.scale, async (canvas, progress, done) => {
         const bitmap = done ? (canvas as OffscreenCanvas).transferToImageBitmap() : await createImageBitmap(canvas as OffscreenCanvas);
         post({ type: 'frame', id, bitmap, progress, done }, [bitmap]);
-      });
+      }, 14, 160, 3, job.layer);
     } else {
       const canvas = paintCard(garden, job.kind, job.variant, job.ppm) as OffscreenCanvas;
       const bitmap = canvas.transferToImageBitmap();

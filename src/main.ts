@@ -17,6 +17,7 @@ import { CLASSIC_SEED } from './world/giverny';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const app = $('app');
 const picture = $<HTMLCanvasElement>('picture'), pictureCtx = picture.getContext('2d')!;
+const bridge = document.createElement('canvas'), bridgeCtx = bridge.getContext('2d')!;
 const lifeCanvas = $<HTMLCanvasElement>('picture-life'), lifeCtx = lifeCanvas.getContext('2d')!;
 const driftCanvas = $<HTMLCanvasElement>('drift'), driftCtx = driftCanvas.getContext('2d')!;
 const canvasFig = $('canvas'), seedInput = $<HTMLInputElement>('seed');
@@ -41,6 +42,7 @@ let life: Life;
 let drift: Drift | null = null;
 const sound = new Ambience();
 sound.muted = storage('monet-muted') === '1';
+const tendCursor = $('tend-cursor');
 let scale = 1;
 let animate = params.get('animate') !== '0' && !reduced;
 let mode: 'easel' | 'drift' = 'easel';
@@ -54,25 +56,30 @@ function randomSeed() {
 
 // ——— Painting the easel ———
 
-const tileId = (t: number) => `tile:${t}@${scale.toFixed(3)}`;
+const tileId = (t: number, layer: 'base' | 'bridge') => `tile:${layer}:${t}@${scale.toFixed(3)}`;
 
 function tileJobs(): [string, Job][] {
-  return Array.from({ length: TILES }, (_, t) => [tileId(t), { type: 'tile', t, scale }] as [string, Job]);
+  const jobs: [string, Job][] = [];
+  for (const layer of ['base', 'bridge'] as const) for (let t = 0; t < TILES; t++) {
+    jobs.push([tileId(t, layer), { type: 'tile', t, scale, layer }]);
+  }
+  return jobs;
 }
 
 function onPainted(id: string) {
   if (!id.startsWith('tile:')) return;
-  const [t, at] = id.slice(5).split('@');
+  const [, layer, t, at] = id.split(/[:@]/);
   if (at !== scale.toFixed(3)) return;
-  const im = pool.get(id), r = tileRect(+t, scale);
-  if (im?.image) pictureCtx.drawImage(im.image, r.px0, r.py0);
+  const im = pool.get(id), r = tileRect(+t, scale), ctx = layer === 'bridge' ? bridgeCtx : pictureCtx;
+  if (im?.image) ctx.drawImage(im.image, r.px0, r.py0);
+  if (layer === 'bridge' && im?.image) pictureCtx.drawImage(im.image, r.px0, r.py0);
   progress();
 }
 
 function progress() {
   let sum = 0;
-  for (let t = 0; t < TILES; t++) sum += pool.get(tileId(t))?.progress ?? 0;
-  const p = sum / TILES, state = $('state');
+  for (const layer of ['base', 'bridge'] as const) for (let t = 0; t < TILES; t++) sum += pool.get(tileId(t, layer))?.progress ?? 0;
+  const p = sum / (TILES * 2), state = $('state');
   finished = p >= 0.999;
   canvasFig.classList.toggle('painting', !finished);
   canvasFig.classList.toggle('ready', finished);
@@ -99,11 +106,15 @@ function layout() {
     const px = picturePixels(scale);
     picture.width = px.w;
     picture.height = px.h;
+    bridge.width = px.w;
+    bridge.height = px.h;
     pictureCtx.fillStyle = '#ebe4d4';
     pictureCtx.fillRect(0, 0, px.w, px.h);
     if (pool) {
       pool.evict((id) => !id.startsWith('tile:'));
-      for (let t = 0; t < TILES; t++) onPainted(tileId(t));
+      pictureCtx.clearRect(0, 0, picture.width, picture.height);
+      bridgeCtx.clearRect(0, 0, bridge.width, bridge.height);
+      for (const layer of ['base', 'bridge'] as const) for (let t = 0; t < TILES; t++) onPainted(tileId(t, layer));
     }
   }
   lifeCanvas.width = Math.round(pw * dpr);
@@ -129,6 +140,7 @@ function setSeed(next: string, push = true, keepLight = false) {
   canvasFig.style.setProperty('--zx', `${(b.cx / W) * 100}%`);
   canvasFig.style.setProperty('--zy', `${((garden.deckY(b.cx) + garden.waterTop) / 2 / H) * 100}%`);
   picture.width = 0;
+  bridge.width = 0;
   layout();
   progress();
   if (push) {
@@ -186,6 +198,40 @@ function toggleLights(open = !$('lights').classList.contains('open')) {
   $('lights').classList.toggle('open', open);
   $('btn-light').setAttribute('aria-expanded', String(open));
 }
+
+// ——— Tending the pond ———
+
+/** Where the pointer is on the painting, in painting units. */
+function onPaint(e: PointerEvent | MouseEvent) {
+  const r = picture.getBoundingClientRect();
+  return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H, cx: e.clientX - r.left, cy: e.clientY - r.top };
+}
+
+/** The pointer has left the painting. */
+function tendOut() {
+  life.pointerOut();
+  life.tending = false;
+  tendCursor.classList.remove('on');
+}
+
+/** The pond is live (the A button): the painting moves, and it can be tended. Switching it off stills it. */
+function toggleLive() {
+  setAnimate(!animate);
+  toast(animate ? 'the pond is live: move through it to plant lilies and scatter petals' : 'the pond is still');
+}
+
+canvasFig.addEventListener('pointermove', (e) => {
+  if (!animate || !finished || mode !== 'easel') return;
+  const p = onPaint(e);
+  tendCursor.style.transform = `translate(${p.cx}px, ${p.cy}px) translate(-50%, -50%)`;
+  tendCursor.classList.add('on');
+  life.tending = true;
+  life.pointer(p.x, p.y);
+});
+canvasFig.addEventListener('pointerleave', tendOut);
+canvasFig.addEventListener('pointerup', (e) => {
+  if (e.pointerType !== 'mouse') tendOut();
+});
 
 // ——— Drifting ———
 
@@ -285,7 +331,15 @@ async function savePicture() {
     toast('still wet: wait for the last touches');
     return;
   }
-  const card = await makePostcard(picture, { title: garden.series.title, line: garden.classic ? 'after Monet, 1899' : `canvas no. ${seed}`, seed });
+  // What has been planted in the pond goes on the postcard too.
+  const comp = document.createElement('canvas');
+  comp.width = picture.width;
+  comp.height = picture.height;
+  const cctx = comp.getContext('2d')!;
+  cctx.drawImage(picture, 0, 0);
+  cctx.scale(picture.width / W, picture.height / H);
+  life.paintPlanted(cctx);
+  const card = await makePostcard(comp, { title: garden.series.title, line: garden.classic ? 'after Monet, 1899' : `canvas no. ${seed}`, seed });
   download(card, `monet-${seed}.png`);
 }
 
@@ -323,8 +377,14 @@ function toast(msg: string) {
 
 function setAnimate(on: boolean) {
   animate = on;
+  canvasFig.classList.toggle('live', on);
+  canvasFig.style.touchAction = on ? 'none' : '';
+  if (!on) tendOut();
   $('btn-animate').setAttribute('aria-pressed', String(on));
-  if (!on) lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);
+  if (!on) {
+    lifeCtx.setTransform(1, 0, 0, 1, 0, 0);
+    lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);
+  }
 }
 
 // ——— Controls ———
@@ -333,7 +393,7 @@ $('btn-new').onclick = () => setSeed(randomSeed());
 $('btn-drift').onclick = () => enterDrift();
 $('btn-back').onclick = () => leaveDrift();
 $('btn-pause').onclick = () => togglePause();
-$('btn-animate').onclick = () => setAnimate(!animate);
+$('btn-animate').onclick = () => toggleLive();
 $('btn-light').onclick = () => toggleLights();
 $('btn-save').onclick = () => savePicture();
 $('btn-snap').onclick = () => savePicture();
@@ -343,6 +403,7 @@ $('about-classic').onclick = () => {
   $<HTMLDialogElement>('about').close();
   setSeed(CLASSIC_SEED);
 };
+// Tending needs no clicking: moving through the pond does it. A click steps inside.
 canvasFig.addEventListener('click', () => {
   if (mode === 'easel' && finished) enterDrift();
 });
@@ -379,8 +440,14 @@ addEventListener('keydown', (e) => {
   switch (e.code) {
     case 'KeyN': setSeed(randomSeed()); break;
     case 'KeyD': enterDrift(); break;
-    case 'KeyA': setAnimate(!animate); break;
+    case 'KeyA': toggleLive(); break;
     case 'KeyL': cycleLight(); break;
+    case 'KeyR':
+      if (life.count) {
+        life.clear();
+        toast('the pond is clear again');
+      }
+      break;
     case 'Escape': toggleLights(false); break;
     case 'KeyS': savePicture(); break;
     case 'KeyC': share(); break;
@@ -436,7 +503,7 @@ function frame(now: number) {
       lifeCtx.clearRect(0, 0, lifeCanvas.width, lifeCanvas.height);
       if (finished) {
         lifeCtx.setTransform(lifeCanvas.width / W, 0, 0, lifeCanvas.height / H, 0, 0);
-        life.draw(lifeCtx, t);
+        life.draw(lifeCtx, t, picture, bridge);
       }
     }
   }

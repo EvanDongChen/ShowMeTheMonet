@@ -278,6 +278,25 @@ button { font: inherit; color: inherit; }
 .canvas.ready { cursor: pointer; }
 .canvas.ready:hover #picture { filter: brightness(1.04) saturate(1.05); }
 
+/* The live pond: the pointer is a ring of light, and moving it through the pond tends it. */
+.canvas.live.ready { cursor: none; }
+.canvas.live.ready:hover #picture { filter: none; }
+.tend-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  border: 2px solid rgba(255, 250, 235, 0.92);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgba(40, 28, 14, 0.55), inset 0 0 0 1.5px rgba(40, 28, 14, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  transition: opacity 0.2s ease;
+}
+.tend-cursor.on { opacity: 1; }
+
 /* ——— Stepping in ——— */
 
 

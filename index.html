@@ -85,6 +85,7 @@
             <canvas id="picture" aria-label="A painting of a Japanese footbridge over a pond of water lilies"></canvas>
             <canvas id="picture-life" aria-hidden="true"></canvas>
             <div class="wet" aria-hidden="true"></div>
+            <div class="tend-cursor" id="tend-cursor" aria-hidden="true"></div>
           </figure>
           <div class="ledge" aria-hidden="true"></div>
           <div class="tag" id="tag">
@@ -151,7 +152,7 @@
           <ellipse class="thumb" cx="78" cy="68" rx="17" ry="13" />
         </svg>
         <div class="dabs" data-for="easel">
-          <button class="dab dab-drift" id="btn-drift" style="--x: 240px; --y: 128px" aria-label="Step inside (D)">
+          <button class="dab dab-drift" id="btn-drift" style="--x: 250px; --y: 136px" aria-label="Step inside (D)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15 Q12 20 21 15 L18 18 Q12 21 6 18Z" /><path d="M12 15 V5 L17 12 Z" class="sail" /></svg>
             <span class="dab-label">step inside</span>
           </button>
@@ -163,9 +164,9 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" /></svg>
             <span class="dab-label">choose the light</span>
           </button>
-          <button class="dab dab-animate" id="btn-animate" style="--x: 230px; --y: 54px" aria-label="Animate (A)" aria-pressed="true">
+          <button class="dab dab-animate" id="btn-animate" style="--x: 230px; --y: 54px" aria-label="Live pond (A)" aria-pressed="true">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 Q7 7 11 10 T19 10 M5 15 Q9 12 13 15 T21 15" /></svg>
-            <span class="dab-label">ripple</span>
+            <span class="dab-label">live pond</span>
           </button>
           <button class="dab dab-save" id="btn-save" style="--x: 182px; --y: 176px" aria-label="Make a postcard (S)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 V15 M7 10 l5 5 5 -5 M5 20 H19" /></svg>
@@ -205,7 +206,9 @@
             arch of the footbridge, the willows, the rafts of lilies and the light they're seen in. Monet painted the
             bridge again and again, in every light; <strong>choose the light</strong> and the canvas is painted over in
             another of his series. Seed <button type="button" class="link" id="about-classic">1899</button> paints his
-            own composition.
+            own composition. The pond is alive. With <strong>Live pond</strong> on, just move your cursor through it: lilies are planted on the water as you go and grow
+            from buds into blooms, petals scatter and float away, and the dragonfly comes to hover over what you plant. It is
+            all still there when you return. Switch it off and the painting is perfectly still.
           </p>
           <p>
             <strong>Step inside</strong> and you pass through the canvas into a rowboat and row on through an endless water garden
@@ -216,8 +219,9 @@
           <dl class="keys">
             <dt>N</dt><dd>new canvas</dd>
             <dt>D</dt><dd>step inside / step out</dd>
-            <dt>A</dt><dd>ripple (animate)</dd>
+            <dt>A</dt><dd>live pond: it moves, and moving through it plants lilies</dd>
             <dt>L</dt><dd>change the light</dd>
+            <dt>R</dt><dd>clear what you have planted</dd>
             <dt>S</dt><dd>make a postcard</dd>
             <dt>C</dt><dd>copy a link</dd>
             <dt>W A S D</dt><dd>row and steer, in the boat</dd>

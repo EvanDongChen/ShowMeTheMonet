@@ -43,19 +43,26 @@ export function tileRect(t: number, scale: number) {
   return { px0, py0, pw: px1 - px0, ph: py1 - py0 };
 }
 
-export function planTile(g: Garden, t: number): Op[] {
+export type TileLayer = 'base' | 'bridge' | 'all';
+
+export function planTile(g: Garden, t: number, layer: TileLayer = 'all'): Op[] {
   const c = t % COLS, r = Math.floor(t / COLS);
-  return planRect(g, (c * W) / COLS, (r * H) / ROWS, ((c + 1) * W) / COLS, ((r + 1) * H) / ROWS);
+  return planRect(g, (c * W) / COLS, (r * H) / ROWS, ((c + 1) * W) / COLS, ((r + 1) * H) / ROWS, layer);
 }
 
 /** Plan any rectangle of the picture; a tile is one, the whole canvas is another. */
-export function planRect(g: Garden, x0: number, y0: number, x1: number, y1: number): Op[] {
+export function planRect(g: Garden, x0: number, y0: number, x1: number, y1: number, layer: TileLayer = 'all'): Op[] {
   const p: TilePlan = { g, x0, y0, x1, y1, pad: PAD, items: [] };
+  if (layer === 'bridge') {
+    planBridge(p);
+    p.items.sort((a, b) => a.layer - b.layer || a.key - b.key);
+    return p.items.map((i) => i.op);
+  }
   planWash(p);
   planFoliage(p);
   planWater(p);
   planLilies(p);
-  planBridge(p);
+  if (layer === 'all') planBridge(p);
   planWillows(p, L.WILLOW_FRONT, 1);
   planVeil(p);
   planReeds(p);
@@ -98,7 +105,7 @@ function weave(ctx: CanvasRenderingContext2D, p: TilePlan) {
 export async function paintTile(
   g: Garden, t: number, scale: number,
   report: (canvas: AnyCanvas, progress: number, done: boolean) => Promise<void> | void,
-  sliceMs = 14, reportEveryMs = 160, restMs = 3,
+  sliceMs = 14, reportEveryMs = 160, restMs = 3, layer: TileLayer = 'all',
 ) {
   const { px0, py0, pw, ph } = tileRect(t, scale);
   // The rasteriser treats a path that crosses the canvas edge a little differently from one that
@@ -111,7 +118,7 @@ export async function paintTile(
     octx.drawImage(canvas as CanvasImageSource, -MARGIN, -MARGIN);
     return out;
   };
-  const ops = planTile(g, t);
+  const ops = planTile(g, t, layer);
   let i = 0, last = performance.now();
   while (i < ops.length) {
     const t0 = performance.now();
